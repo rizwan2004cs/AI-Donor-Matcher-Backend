@@ -21,6 +21,17 @@
         <java.version>21</java.version>
     </properties>
 
+    <!-- Override CVE-2024-57699: json-smart 2.5.1 has a HIGH severity DoS vulnerability -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>net.minidev</groupId>
+                <artifactId>json-smart</artifactId>
+                <version>2.5.2</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- Spring Boot Starters -->
         <dependency>
