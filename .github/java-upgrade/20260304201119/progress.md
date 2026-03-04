@@ -8,7 +8,7 @@
 | Step | Title | Status | Result |
 |------|-------|--------|--------|
 | 1 | Setup Environment | ✅ Completed | Maven 3.9.12 installed, JDKs verified |
-| 2 | Setup Baseline | ⏸️ Not Started | - |
+| 2 | Setup Baseline | ✅ Completed | Compile: SUCCESS, Tests: PASSED, Lombok: 1.18.32 |
 | 3 | Update Java Version to 21 | ⏸️ Not Started | - |
 | 4 | Final Validation | ⏸️ Not Started | - |
 
@@ -32,14 +32,20 @@
 ---
 
 ### Step 2: Setup Baseline
-**Status**: ⏸️ Not Started  
+**Status**: ✅ Completed  
 **Goal**: Establish pre-upgrade compilation and test results with current JDK 17
 
-**Changes Made**: (To be updated during execution)
+**Changes Made**:
+- Ran baseline compilation with JDK 17: SUCCESS
+- Ran baseline tests with JDK 17: ALL TESTS PASSED
+- Documented Lombok version: 1.18.32 (managed by Spring Boot 3.2.5, compatible with Java 21)
 
-**Verification**: (To be updated during execution)
+**Verification**:
+- Command: `mvn clean compile test-compile -q && mvn test -q`
+- JDK: C:\Program Files\Java\jdk-17\bin (Java 17.0.12)
+- Result: Compilation SUCCESS, Tests PASSED (100% pass rate)
 
-**Result**: (To be updated during execution)
+**Result**: ✅ Baseline established - all tests passing with Java 17, Lombok 1.18.32 is Java 21 compatible
 
 ---
 
