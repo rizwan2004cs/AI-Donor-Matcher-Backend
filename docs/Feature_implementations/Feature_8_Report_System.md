@@ -1,97 +1,115 @@
-# Feature 8 — Report System (`ReportController`)
+# Feature 8 — Report System (on `NgoController`)
 
-> **Priority:** Step 8 — donors report suspicious NGOs  
-> **Security:** Authenticated users (DONOR) can submit reports
+> **Priority:** Step 8 in build order (last)  
+> **Security:** Any authenticated user can submit a report  
+> **FEATURES.md:** Feature 2.3 — listed under "NGO Public Discovery"  
+> **Note:** This endpoint is added to `NgoController.java`, not a separate controller.
 
 ---
 
 ## Endpoint
 
-| Method | Path | Body | Response | Auth |
-|--------|------|------|----------|------|
-| `POST` | `/api/ngos/{id}/report` | `ReportRequest` | `Report` | Authenticated |
+| Method | Path | Body | Response | Auth | Status |
+|--------|------|------|----------|------|--------|
+| `POST` | `/api/ngos/{id}/report` | `{ reason }` | `200 "Report submitted."` | Any | 🔧 |
 
 ---
 
-## File to Create
+## Addition to `controller/NgoController.java`
 
-### `controller/ReportController.java`
-
-**Path:** `src/main/java/com/aidonormatcher/backend/controller/ReportController.java`
+Add this method to the existing NgoController:
 
 ```java
-package com.aidonormatcher.backend.controller;
+// ─── Report (any authenticated user) ─────────────────────────────────────
 
-import com.aidonormatcher.backend.dto.ReportRequest;
-import com.aidonormatcher.backend.entity.Report;
-import com.aidonormatcher.backend.entity.User;
+@PostMapping("/api/ngos/{id}/report")
+public ResponseEntity<String> submitReport(
+        @AuthenticationPrincipal User user,
+        @PathVariable Long id,
+        @RequestBody Map<String, String> body) {
+    reportService.submitReport(id, body.get("reason"), user.getId());
+    return ResponseEntity.ok("Report submitted.");
+}
+```
+
+**Additional dependency to inject in NgoController:**
+```java
+private final ReportService reportService;
+```
+
+**Additional imports:**
+```java
 import com.aidonormatcher.backend.service.ReportService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import java.util.Map;
+```
 
-@RestController
-@RequiredArgsConstructor
-public class ReportController {
+---
 
-    private final ReportService reportService;
+## Actual Service Method Signature
 
-    @PostMapping("/api/ngos/{id}/report")
-    public ResponseEntity<Report> submitReport(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long id,
-            @Valid @RequestBody ReportRequest request) {
-        return ResponseEntity.ok(reportService.submitReport(user.getEmail(), id, request));
-    }
+| Controller Call | Service Method | Returns |
+|----------------|---------------|---------|
+| `submitReport(ngoId, reason, userId)` | `reportService.submitReport(Long ngoId, String reason, Long reporterUserId)` | `void` |
+
+> **Important:** `ReportService.submitReport` takes three parameters: `ngoId`, `reason` (String), and `reporterUserId` (Long). It does **not** take a `ReportRequest` DTO — the reason is passed as a plain string.
+
+---
+
+## Service Behaviour (from ReportService.java)
+
+1. Loads reporter User by ID
+2. Loads NGO by ID
+3. Creates and saves `Report(reporter, ngo, reason, reportedAt = now())`
+4. Sends confirmation email to the reporter
+5. **Auto-flag at 3+ reports:** Counts reports for this NGO. If `>= 3`, finds an ADMIN user and sends `sendAdminReportFlagEmail(admin, ngo)` alert
+
+---
+
+## ReportRequest DTO
+
+The existing `ReportRequest.java` is a simple record:
+```java
+public record ReportRequest(String reason) {}
+```
+
+However, the actual `ReportService.submitReport()` takes `String reason` directly (not the DTO). The controller extracts the reason from request body as `Map<String, String>` or you can use the DTO:
+
+**Alternative using ReportRequest:**
+```java
+@PostMapping("/api/ngos/{id}/report")
+public ResponseEntity<String> submitReport(
+        @AuthenticationPrincipal User user,
+        @PathVariable Long id,
+        @Valid @RequestBody ReportRequest request) {
+    reportService.submitReport(id, request.reason(), user.getId());
+    return ResponseEntity.ok("Report submitted.");
 }
 ```
 
 ---
 
-## Service Methods Used
-
-Already exists in `ReportService.java`:
-- `submitReport(String email, Long ngoId, ReportRequest request)` → creates report, auto-flags NGO if 3+ reports, emails admin
-
----
-
 ## SecurityConfig Change
 
-The report endpoint is under `/api/ngos/{id}/report`. The current rules allow:
+The POST to `/api/ngos/{id}/report` needs authentication but is not role-restricted (both donors and admins can report). Current rules:
+
+```java
+.requestMatchers(HttpMethod.GET, "/api/ngos/**").permitAll()  // only GET is public
+```
+
+POST to `/api/ngos/*/report` falls through to `.anyRequest().authenticated()`, which **already works**. However, for explicit clarity, add:
+
 ```java
 .requestMatchers(HttpMethod.GET, "/api/ngos/**").permitAll()
+.requestMatchers(HttpMethod.POST, "/api/ngos/*/report").authenticated()  // ← ADD (optional, explicit)
 ```
-
-This only allows GET. POST to `/api/ngos/{id}/report` needs to be explicitly allowed for authenticated users:
-
-```java
-.requestMatchers(HttpMethod.POST, "/api/ngos/*/report").authenticated()
-```
-
-Add this **before** the general `.anyRequest().authenticated()` line:
-```java
-.requestMatchers(HttpMethod.GET, "/api/ngos/**").permitAll()
-.requestMatchers(HttpMethod.POST, "/api/ngos/*/report").authenticated()  // ← ADD
-```
-
-Alternatively, since `.anyRequest().authenticated()` already catches it, this explicit rule is optional but makes the intent clear.
-
----
-
-## Business Rules
-
-1. **Auto-flag at 3+ reports** — if an NGO accumulates 3 or more reports, it gets auto-flagged for admin review
-2. **Admin notification** — email sent to admin when new report is submitted
-3. **Duplicate prevention** — consider adding a check to prevent the same donor from reporting the same NGO multiple times (may need to add this to ReportService)
 
 ---
 
 ## Testing Checklist
 
-- [ ] `POST /api/ngos/{id}/report` with valid ReportRequest → creates report
-- [ ] Report auto-flags NGO at 3+ reports
-- [ ] Admin receives email notification
+- [ ] `POST /api/ngos/{id}/report` with `{ "reason": "Suspicious activity" }` → 200
+- [ ] Report saved in database with correct reporter, ngo, reason, timestamp
+- [ ] Reporter receives confirmation email
+- [ ] Submit 3 reports for same NGO → admin receives flag alert email
 - [ ] Unauthenticated request → 401
-- [ ] Invalid NGO ID → appropriate error
+- [ ] Invalid NGO ID → 400 "NGO not found."

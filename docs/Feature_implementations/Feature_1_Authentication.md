@@ -9,11 +9,12 @@
 
 ## Endpoints
 
-| Method | Path | Request Body | Response | Auth |
-|--------|------|-------------|----------|------|
-| `POST` | `/api/auth/register` | `RegisterRequest` | `200 "Registration successful..."` | No |
-| `GET` | `/api/auth/verify?token={uuid}` | — | `200 "Email verified..."` | No |
-| `POST` | `/api/auth/login` | `LoginRequest` | `200 LoginResponse` | No |
+| Method | Path | Request Body | Response | Auth | Status |
+|--------|------|-------------|----------|------|--------|
+| `POST` | `/api/auth/register` | `RegisterRequest` | `200 "Registration successful..."` | No | 🔧 |
+| `GET` | `/api/auth/verify?token={uuid}` | — | `200 "Email verified..."` | No | 🔧 |
+| `POST` | `/api/auth/login` | `LoginRequest` | `200 LoginResponse` | No | 🔧 |
+| `POST` | `/api/auth/resend-verification` | `{ email }` | `200 "Verification email resent."` | No | ⬜ |
 
 ---
 
@@ -45,7 +46,7 @@ public class AuthController {
      *
      * Accepts RegisterRequest { fullName, email, password, role, location? }
      * - role=DONOR → saves User, sends verification email
-     * - role=NGO   → saves User + Ngo (status=PENDING), sends verification email
+     * - role=NGO   → saves User + Ngo (status=PENDING, profileComplete=false), sends verification email
      */
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
@@ -74,8 +75,26 @@ public class AuthController {
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
+
+    // ─── Feature 1.4 — Resend Verification (TODO: implement service method) ─
+
+    // @PostMapping("/resend-verification")
+    // public ResponseEntity<String> resendVerification(@RequestBody Map<String, String> body) {
+    //     authService.resendVerification(body.get("email"));
+    //     return ResponseEntity.ok("Verification email resent.");
+    // }
 }
 ```
+
+---
+
+## Actual Service Method Signatures
+
+| Controller Method | Service Call | Signature |
+|-------------------|-------------|-----------|
+| `register()` | `authService.register(req)` | `void register(RegisterRequest req)` |
+| `verifyEmail()` | `authService.verifyEmail(token)` | `void verifyEmail(String token)` |
+| `login()` | `authService.login(req)` | `LoginResponse login(LoginRequest req)` |
 
 ---
 
@@ -110,13 +129,11 @@ public record LoginResponse(
 
 ---
 
-## Service Method Mapping
+## Service Behaviour (from AuthService.java)
 
-| Controller Method | Service Call | Behaviour |
-|-------------------|-------------|-----------|
-| `register()` | `authService.register(req)` | Checks `existsByEmail`, encodes password, saves User, creates Ngo if NGO role, sends verification email |
-| `verifyEmail()` | `authService.verifyEmail(token)` | Finds by token, sets `emailVerified=true`, clears token |
-| `login()` | `authService.login(req)` | Finds by email, BCrypt match, generates JWT via `jwtService.generateToken()` |
+- **register:** Checks `existsByEmail` → encodes password → saves User → if NGO role, creates linked Ngo entity (status=PENDING, profileComplete=false, trustTier=NEW) → generates UUID token → calls `emailService.sendVerificationEmail(user, token)`
+- **verifyEmail:** Finds by token → sets `emailVerified=true` → clears token → saves
+- **login:** Finds by email → BCrypt match → generates JWT via `jwtService.generateToken(user)` → returns `LoginResponse(token, userId, fullName, email, role, emailVerified)`
 
 ---
 
@@ -138,6 +155,28 @@ public record LoginResponse(
 ```
 
 No changes needed.
+
+---
+
+## Feature 1.4 — Resend Verification Email (⬜ TODO)
+
+**Not yet implemented in AuthService.** Needs a new service method:
+
+```java
+public void resendVerification(String email) {
+    User user = userRepository.findByEmail(email)
+        .orElseThrow(() -> new RuntimeException("User not found."));
+    if (user.isEmailVerified()) {
+        throw new RuntimeException("Email already verified.");
+    }
+    String token = UUID.randomUUID().toString();
+    user.setEmailVerificationToken(token);
+    userRepository.save(user);
+    emailService.sendVerificationEmail(user, token);
+}
+```
+
+Add this to AuthService and uncomment the controller endpoint when ready.
 
 ---
 
