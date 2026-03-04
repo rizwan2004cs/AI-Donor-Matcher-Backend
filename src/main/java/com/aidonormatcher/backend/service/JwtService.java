@@ -1,6 +1,7 @@
 package com.aidonormatcher.backend.service;
 
 import com.aidonormatcher.backend.entity.User;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -42,7 +43,11 @@ public class JwtService {
     }
 
     public boolean isValid(String token, UserDetails user) {
-        return extractEmail(token).equals(user.getUsername()) && !isExpired(token);
+        try {
+            return extractEmail(token).equals(user.getUsername()) && !isExpired(token);
+        } catch (JwtException e) {
+            return false;
+        }
     }
 
     private boolean isExpired(String token) {
