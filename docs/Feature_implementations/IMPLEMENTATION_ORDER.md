@@ -1,48 +1,50 @@
-# Implementation Order — Controller Layer + Frontend API Alignment
+# Implementation Order — Controller Layer
 
 > **Context:** All services, entities, DTOs, repositories, enums, and config are complete.  
-> **What's missing:** REST controllers to expose services, plus one new endpoint (`GET /api/needs/nearby`) the frontend requires.  
+> **What's missing:** REST controllers to expose services to the frontend.  
 > **Frontend expects:** `Authorization: Bearer <token>` on all authenticated calls via Axios interceptor.
 
 ---
 
-## Frontend API Contract
+## API Reference (from FEATURES.md + BACKEND.md)
 
-| # | Method | Frontend Endpoint | Auth | Role |
-|---|--------|-------------------|------|------|
-| 1 | `POST` | `/api/auth/register` | No | — |
-| 2 | `POST` | `/api/auth/login` | No | — |
-| 3 | `GET` | `/api/auth/verify?token=` | No | — |
-| 4 | `GET` | `/api/needs/nearby?lat=&lng=&radius=&category=` | No | — |
-| 5 | `POST` | `/api/pledges` | Yes | DONOR |
-| 6 | `DELETE` | `/api/pledges/{id}` | Yes | DONOR |
-| 7 | `GET` | `/api/pledges/donor/active` | Yes | DONOR |
-| 8 | `GET` | `/api/pledges/history` | Yes | DONOR |
-| 9 | `GET` | `/api/ngo/my/profile` | Yes | NGO |
-| 10 | `PUT` | `/api/ngo/my/profile` | Yes | NGO |
-| 11 | `POST` | `/api/ngo/my/photo` | Yes | NGO |
-| 12 | `GET` | `/api/ngo/my/needs` | Yes | NGO |
-| 13 | `POST` | `/api/needs` | Yes | NGO |
-| 14 | `PUT` | `/api/needs/{id}` | Yes | NGO |
-| 15 | `DELETE` | `/api/needs/{id}` | Yes | NGO |
-| 16 | `PATCH` | `/api/needs/{id}/fulfill` | Yes | NGO |
-| 17 | `POST` | `/api/ngos/{id}/report` | Yes | Any |
-| 18 | `GET` | `/api/ngos/{id}` | No | — |
-| 19 | `GET` | `/api/admin/ngos/pending` | Yes | ADMIN |
-| 20 | `GET` | `/api/admin/ngos` | Yes | ADMIN |
-| 21 | `POST` | `/api/admin/ngos/{id}/approve` | Yes | ADMIN |
-| 22 | `POST` | `/api/admin/ngos/{id}/reject` | Yes | ADMIN |
-| 23 | `POST` | `/api/admin/ngos/{id}/suspend` | Yes | ADMIN |
-| 24 | `GET` | `/api/admin/reports` | Yes | ADMIN |
-| 25 | `PUT` | `/api/admin/needs/{id}` | Yes | ADMIN |
-| 26 | `DELETE` | `/api/admin/needs/{id}` | Yes | ADMIN |
-| 27 | `GET` | `/api/admin/stats` | Yes | ADMIN |
+| # | Method | Endpoint | Auth | Role | Feature |
+|---|--------|----------|------|------|---------|
+| 1 | `POST` | `/api/auth/register` | No | — | 1.1 |
+| 2 | `GET` | `/api/auth/verify?token=` | No | — | 1.2 |
+| 3 | `POST` | `/api/auth/login` | No | — | 1.3 |
+| 4 | `POST` | `/api/auth/resend-verification` | No | — | 1.4 ⬜ |
+| 5 | `GET` | `/api/ngos?lat=&lng=&radius=&category=&search=` | No | — | 2.1 |
+| 6 | `GET` | `/api/ngos/{id}` | No | — | 2.2 |
+| 7 | `POST` | `/api/ngos/{id}/report` | Yes | Any | 2.3 |
+| 8 | `GET` | `/api/ngo/my/profile` | Yes | NGO | 3.1 |
+| 9 | `PUT` | `/api/ngo/my/profile` | Yes | NGO | 3.2 |
+| 10 | `POST` | `/api/ngo/my/photo` | Yes | NGO | 3.3 |
+| 11 | `GET` | `/api/ngo/my/needs` | Yes | NGO | 4.1 |
+| 12 | `POST` | `/api/needs` | Yes | NGO | 4.2 |
+| 13 | `PUT` | `/api/needs/{id}` | Yes | NGO | 4.3 |
+| 14 | `DELETE` | `/api/needs/{id}` | Yes | NGO | 4.4 |
+| 15 | `PATCH` | `/api/needs/{id}/fulfill` | Yes | NGO | 4.5 |
+| 16 | `POST` | `/api/pledges` | Yes | DONOR | 5.1 |
+| 17 | `DELETE` | `/api/pledges/{id}` | Yes | DONOR | 5.2 |
+| 18 | `GET` | `/api/pledges/active` | Yes | DONOR | 5.3 |
+| 19 | `GET` | `/api/pledges/history` | Yes | DONOR | 5.4 |
+| 20 | `GET` | `/api/admin/ngos/pending` | Yes | ADMIN | 6.1 |
+| 21 | `POST` | `/api/admin/ngos/{id}/approve` | Yes | ADMIN | 6.2 |
+| 22 | `POST` | `/api/admin/ngos/{id}/reject` | Yes | ADMIN | 6.3 |
+| 23 | `POST` | `/api/admin/ngos/{id}/suspend` | Yes | ADMIN | 6.4 |
+| 24 | `GET` | `/api/admin/reports` | Yes | ADMIN | 7.1 |
+| 25 | `PUT` | `/api/admin/needs/{id}` | Yes | ADMIN | 7.2 |
+| 26 | `DELETE` | `/api/admin/needs/{id}` | Yes | ADMIN | 7.3 |
+| 27 | `GET` | `/api/admin/stats` | Yes | ADMIN | 7.4 |
 
 ---
 
-## Build Order (step-by-step)
+## Build Order
 
-Each step is independently deployable and testable. Build in this exact order.
+> Follows the recommended order from FEATURES.md:  
+> **1 → 3 → 4 → 2 → 5 → 6+7 → 1.4 → 7.4**  
+> Controllers should be built in this sequence to enable end-to-end testing at each stage.
 
 ### Step 0 — Global Exception Handler (prerequisite)
 
@@ -50,9 +52,9 @@ Each step is independently deployable and testable. Build in this exact order.
 |------|------|
 | `controller/GlobalExceptionHandler.java` | NEW |
 
-Maps service exceptions to proper HTTP status codes. All controllers depend on this.
+Maps service-layer exceptions to proper HTTP status codes. All controllers depend on this.
 
-**Guide:** `Feature_implementations/_00_Global_Exception_Handler.md`
+**Guide:** `_00_Global_Exception_Handler.md`
 
 ---
 
@@ -62,53 +64,53 @@ Maps service exceptions to proper HTTP status codes. All controllers depend on t
 |------|------|
 | `controller/AuthController.java` | NEW |
 
-Endpoints: register, login, verify email. All public.
+Endpoints: register, verify email, login. All public.  
+Feature 1.4 (resend verification) is ⬜ — service method not yet implemented; add last.
 
-**Guide:** `Feature_implementations/Feature_1_Authentication.md`  
+**Guide:** `Feature_1_Authentication.md`  
 **Test:** Register a donor → verify email → login → get JWT
 
 ---
 
-### Step 2 — Nearby Needs Discovery (frontend's map feed)
-
-| File | Type |
-|------|------|
-| `dto/NearbyNeedDTO.java` | NEW |
-| `repository/NeedRepository.java` | MODIFY — add Haversine query |
-| `service/NeedService.java` | MODIFY — add `findNearbyNeeds()` |
-| `controller/NeedController.java` | NEW |
-| `config/SecurityConfig.java` | MODIFY — add permitAll for `/api/needs/nearby` |
-
-This is the **biggest change** — the frontend expects need-centric discovery (`/api/needs/nearby`) but the backend only has NGO-centric discovery. Requires a new native Haversine query joining `needs → ngos`.
-
-**Guide:** `Feature_implementations/Feature_2_Nearby_Needs.md`  
-**Test:** Seed DB with NGOs (with lat/lng) + active needs → call `/api/needs/nearby?lat=...&lng=...&radius=50`
-
----
-
-### Step 3 — NGO Profile Management (NGOs go live)
+### Step 2 — NGO Profile Management (NGOs go live)
 
 | File | Type |
 |------|------|
 | `controller/NgoController.java` | NEW |
 
-Endpoints: get/update profile, upload photo. Plus public `GET /api/ngos/{id}`.
+Endpoints: get/update own profile, upload photo.  
+NGOs must complete profile (all required fields + geocoded address) before appearing on the discovery map.
 
-**Guide:** `Feature_implementations/Feature_3_NGO_Profile.md`  
-**Test:** Login as NGO → complete profile → verify `profileComplete=true`
+**Guide:** `Feature_3_NGO_Profile.md`  
+**Test:** Login as NGO → complete profile → verify `profileComplete=true` → address geocoded to lat/lng
 
 ---
 
-### Step 4 — Needs Management (NGOs post needs)
+### Step 3 — Needs Management (NGOs post needs)
 
 | File | Type |
 |------|------|
-| `controller/NeedController.java` | MODIFY — add NGO endpoints |
+| `controller/NeedController.java` | NEW |
+| `config/SecurityConfig.java` | MODIFY — add role rules for `/api/needs/**` |
 
-Endpoints: list own needs, create/edit/delete/fulfill needs. Adds to NeedController from Step 2.
+Endpoints: list own needs, create/edit/delete/fulfill needs.
 
-**Guide:** `Feature_implementations/Feature_4_Needs_Management.md`  
+**Guide:** `Feature_4_Needs_Management.md`  
 **Test:** Login as NGO → create 5 needs → verify 6th is rejected → fulfill one
+
+---
+
+### Step 4 — NGO Public Discovery (donor-facing map feed)
+
+| File | Type |
+|------|------|
+| `controller/NgoController.java` | MODIFY — add discovery + public view endpoints |
+
+Endpoints: `GET /api/ngos` (Haversine discovery with radius, category, search filters), `GET /api/ngos/{id}` (public profile).  
+Uses existing `NgoService.discoverNgos()`, `NgoRepository.findNearby()`, and `NgoDiscoveryDTO`.
+
+**Guide:** `Feature_2_NGO_Discovery.md`  
+**Test:** Seed DB with approved, profile-complete NGOs with active needs → call `GET /api/ngos?lat=12.97&lng=77.59&radius=25`
 
 ---
 
@@ -118,36 +120,24 @@ Endpoints: list own needs, create/edit/delete/fulfill needs. Adds to NeedControl
 |------|------|
 | `controller/PledgeController.java` | NEW |
 
-Endpoints: create pledge, cancel, get active (`/api/pledges/donor/active`), get history.
+Endpoints: create pledge, cancel, get active (`/api/pledges/active`), get history.
 
-**Guide:** `Feature_implementations/Feature_5_Pledge_System.md`  
-**Test:** Login as donor → pledge → verify quantity updates → cancel → verify restored
+**Guide:** `Feature_5_Pledge_System.md`  
+**Test:** Login as donor → pledge → verify quantity updates → cancel → verify quantity restored
 
 ---
 
-### Step 6 — Admin Verification
+### Step 6 + 7 — Admin Verification + Moderation
 
 | File | Type |
 |------|------|
 | `controller/AdminController.java` | NEW |
 
-Endpoints: pending NGOs, approve, reject, suspend (cascade).
+Verification: pending NGOs, approve (POST), reject with reason (POST), suspend with cascade (POST).  
+Moderation: reports, edit/remove need, stats dashboard.
 
-**Guide:** `Feature_implementations/Feature_6_Admin_Verification.md`  
-**Test:** Login as admin → approve NGO → verify status change + trust recalc
-
----
-
-### Step 7 — Admin Moderation + Stats
-
-| File | Type |
-|------|------|
-| `controller/AdminController.java` | MODIFY — add moderation endpoints |
-
-Endpoints: reports queue, edit/remove need, stats dashboard.
-
-**Guide:** `Feature_implementations/Feature_7_Admin_Moderation.md`  
-**Test:** `GET /api/admin/stats` → verify all 6 keys present
+**Guide:** `Feature_6_Admin_Verification.md` + `Feature_7_Admin_Moderation.md`  
+**Test:** Login as admin → approve NGO → verify status + trust recalc → `GET /api/admin/stats`
 
 ---
 
@@ -156,44 +146,75 @@ Endpoints: reports queue, edit/remove need, stats dashboard.
 | File | Type |
 |------|------|
 | `controller/NgoController.java` | MODIFY — add report endpoint |
-| `config/SecurityConfig.java` | MODIFY — add auth rule for report |
+| `config/SecurityConfig.java` | MODIFY — add auth rule for POST on `/api/ngos/*/report` |
 
 Endpoint: `POST /api/ngos/{id}/report`. Any authenticated user.
 
-**Guide:** `Feature_implementations/Feature_8_Report_System.md`  
-**Test:** Submit 3 reports → verify admin alert email triggered
+**Guide:** `Feature_8_Report_System.md`  
+**Test:** Submit 3 reports for same NGO → verify admin alert email triggered
+
+---
+
+### Nice-to-have (add last)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 1.4 | `POST /api/auth/resend-verification` | ⬜ | Service method not yet implemented |
 
 ---
 
 ## Files Created / Modified (Summary)
 
-### New Files (7)
+### New Files (6)
 
 | File | Created In |
 |------|-----------|
 | `controller/GlobalExceptionHandler.java` | Step 0 |
 | `controller/AuthController.java` | Step 1 |
-| `dto/NearbyNeedDTO.java` | Step 2 |
-| `controller/NeedController.java` | Step 2 |
-| `controller/NgoController.java` | Step 3 |
+| `controller/NgoController.java` | Step 2 (+ modified in Steps 4, 8) |
+| `controller/NeedController.java` | Step 3 |
 | `controller/PledgeController.java` | Step 5 |
 | `controller/AdminController.java` | Step 6 |
 
-### Modified Files (3)
+### Modified Files (1)
 
 | File | Steps |
 |------|-------|
-| `repository/NeedRepository.java` | Step 2 — add Haversine query |
-| `service/NeedService.java` | Step 2 — add `findNearbyNeeds()` |
-| `config/SecurityConfig.java` | Steps 2, 8 — add permit rules |
+| `config/SecurityConfig.java` | Steps 3, 8 — add rules for `/api/needs/**` and `/api/ngos/*/report` |
 
 ---
 
-## Key Decisions
+## Important: Service Method Signatures
 
-| Decision | Rationale |
-|----------|-----------|
-| `GET /api/needs/nearby` (need-centric) instead of `GET /api/ngos` (NGO-centric) | Frontend expects needs as first-class map objects |
-| `GET /api/pledges/donor/active` instead of `/api/pledges/active` | Matches exact frontend Axios call |
-| `POST /api/ngos/{id}/report` open to any authenticated role | Donors and admins should both be able to report |
-| Global exception handler as Step 0 | All controllers need consistent error responses |
+Controllers must match the **actual** service method signatures. These use **user/entity IDs**, not emails:
+
+| Service Method | Parameters | Returns |
+|---|---|---|
+| `AuthService.register(req)` | `RegisterRequest` | `void` |
+| `AuthService.verifyEmail(token)` | `String` | `void` |
+| `AuthService.login(req)` | `LoginRequest` | `LoginResponse` |
+| `NgoService.getMyProfile(email)` | `String` | `Ngo` |
+| `NgoService.updateProfile(email, req)` | `String`, `NgoProfileRequest` | `Ngo` |
+| `NgoService.updatePhotoUrl(email, url)` | `String`, `String` | `void` |
+| `NgoService.getNgoById(id)` | `Long` | `Ngo` |
+| `NgoService.discoverNgos(lat, lng, radius, category, search)` | `Double×2`, `Double`, `String×2` | `List<NgoDiscoveryDTO>` |
+| `NeedService.createNeed(req, ngoId)` | `NeedRequest`, `Long` | `Need` |
+| `NeedService.updateNeed(needId, req, ngoUserId)` | `Long`, `NeedRequest`, `Long` | `Need` |
+| `NeedService.deleteNeed(needId, ngoUserId)` | `Long`, `Long` | `void` |
+| `NeedService.fulfillNeed(needId, ngoUserId)` | `Long`, `Long` | `void` |
+| `NeedService.getNeedsByNgo(ngo)` | `Ngo` | `List<Need>` |
+| `PledgeService.createPledge(req, donorId)` | `PledgeRequest`, `Long` | `PledgeResponse` |
+| `PledgeService.cancelPledge(pledgeId, donorId)` | `Long`, `Long` | `void` |
+| `PledgeService.getActivePledges(donorId)` | `Long` | `List<Pledge>` |
+| `PledgeService.getPledgeHistory(donorId)` | `Long` | `List<Pledge>` |
+| `AdminService.approveNgo(ngoId)` | `Long` | `void` |
+| `AdminService.rejectNgo(ngoId, reason)` | `Long`, `String` | `void` |
+| `AdminService.suspendNgo(ngoId)` | `Long` | `void` |
+| `AdminService.removeNeed(needId)` | `Long` | `void` |
+| `AdminService.editNeed(needId, req)` | `Long`, `NeedRequest` | `Need` |
+| `AdminService.getReports()` | — | `List<Report>` |
+| `AdminService.getStats()` | — | `Map<String, Object>` |
+| `ReportService.submitReport(ngoId, reason, reporterUserId)` | `Long`, `String`, `Long` | `void` |
+
+> Controllers extract user IDs from `@AuthenticationPrincipal User user` → `user.getId()`.  
+> NGO-specific controllers resolve the `Ngo` entity via `NgoRepository.findByUser(user)` or `findByUserId(user.getId())` when service methods need `ngoId` or `Ngo`.

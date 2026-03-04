@@ -1,6 +1,6 @@
-# Feature 7 — Admin Moderation (`AdminController` — Part 2)
+# Feature 7 — Admin Moderation + Stats (`AdminController` — Part 2)
 
-> **Priority:** Step 7 — admins moderate content and view stats  
+> **Priority:** Step 6+7 (built together with Feature 6)  
 > **Security:** `ROLE_ADMIN` required  
 > **Note:** These endpoints are **added** to the `AdminController.java` created in Feature 6.
 
@@ -8,12 +8,12 @@
 
 ## Endpoints
 
-| Method | Path | Body / Params | Response | Auth |
-|--------|------|---------------|----------|------|
-| `GET` | `/api/admin/reports` | — | `List<Report>` | ADMIN |
-| `PUT` | `/api/admin/needs/{id}` | `NeedRequest` | `Need` | ADMIN |
-| `DELETE` | `/api/admin/needs/{id}` | — | `204 No Content` | ADMIN |
-| `GET` | `/api/admin/stats` | — | `Map<String, Object>` | ADMIN |
+| Method | Path | Body / Params | Response | Auth | Status |
+|--------|------|---------------|----------|------|--------|
+| `GET` | `/api/admin/reports` | — | `List<Report>` | ADMIN | 🔧 |
+| `PUT` | `/api/admin/needs/{id}` | `NeedRequest` | `Need` | ADMIN | 🔧 |
+| `DELETE` | `/api/admin/needs/{id}` | — | `204 No Content` | ADMIN | 🔧 |
+| `GET` | `/api/admin/stats` | — | `Map<String, Object>` | ADMIN | 🔧 |
 
 ---
 
@@ -52,52 +52,64 @@ public ResponseEntity<Map<String, Object>> getStats() {
 
 ---
 
-## Service Methods Used
+## Actual Service Method Signatures
 
-All already exist in `AdminService.java`:
-- `getReports()` → returns all reports
-- `editNeed(Long id, NeedRequest request)` → admin override edit (no lock guard)
-- `removeNeed(Long id)` → deletes need + cascades pledge cancellations, emails NGO + donors
-- `getStats()` → returns `Map` with counts: totalDonors, totalNgos, totalNeeds, totalPledges, pendingNgos, activeNeeds, etc.
+| Controller Call | Service Method | Returns |
+|----------------|---------------|---------|
+| `getReports()` | `adminService.getReports()` | `List<Report>` |
+| `editNeed(id, req)` | `adminService.editNeed(Long needId, NeedRequest req)` | `Need` |
+| `removeNeed(id)` | `adminService.removeNeed(Long needId)` | `void` |
+| `getStats()` | `adminService.getStats()` | `Map<String, Object>` |
 
 ---
 
-## Stats Response Shape
+## Service Behaviour (from AdminService.java)
 
-The frontend expects:
+**`getReports`:** Returns all reports ordered by `reportedAt DESC`.
+
+**`editNeed`:** Admin override — updates need fields directly (no lock guard, no ownership check). Sets category, itemName, description, quantityRequired, urgency, expiryDate.
+
+**`removeNeed` (cascade):**
+1. Finds all ACTIVE pledges on the need
+2. Sets each pledge to CANCELLED → emails each affected donor
+3. Deletes the need
+
+**`getStats`:** Currently returns:
 ```json
 {
-  "totalDonors": 42,
+  "totalUsers": 42,
   "totalNgos": 15,
   "pendingNgos": 3,
-  "approvedNgos": 10,
-  "suspendedNgos": 2,
   "totalNeeds": 87,
-  "activeNeeds": 45,
-  "fulfilledNeeds": 30,
   "totalPledges": 120,
-  "activePledges": 55,
   "totalReports": 8
 }
 ```
 
-If `AdminService.getStats()` doesn't return all these keys, it may need to be extended.
+> **Note:** FEATURES.md marks stats as ⬜ (Feature 7.4). The service method **does exist** but may need extending to include additional keys the frontend expects, such as:
+> - `approvedNgos`, `suspendedNgos`
+> - `activeNeeds`, `fulfilledNeeds`
+> - `activePledges`
+> - `totalDonors`
+>
+> Extend `AdminService.getStats()` as needed when building the frontend dashboard.
 
 ---
 
-## SecurityConfig Rules
+## SecurityConfig Rules (already in place)
 
-Already covered:
 ```java
 .requestMatchers("/api/admin/**").hasRole("ADMIN")
 ```
+
+No changes needed.
 
 ---
 
 ## Testing Checklist
 
-- [ ] `GET /api/admin/reports` → returns all reports
-- [ ] `PUT /api/admin/needs/{id}` → admin can edit any need (no lock guard)
-- [ ] `DELETE /api/admin/needs/{id}` → cascades pledge cancellations
-- [ ] `GET /api/admin/stats` → returns dashboard statistics map
+- [ ] `GET /api/admin/reports` → returns all reports ordered by date
+- [ ] `PUT /api/admin/needs/{id}` → admin can edit any need (no lock guard, no ownership check)
+- [ ] `DELETE /api/admin/needs/{id}` → cascades: cancels active pledges, emails donors, deletes need
+- [ ] `GET /api/admin/stats` → returns statistics map with expected keys
 - [ ] All endpoints return 403 for non-ADMIN roles
