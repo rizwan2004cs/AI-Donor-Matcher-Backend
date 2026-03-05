@@ -1,0 +1,288 @@
+/* ============================================
+   AI Donor Matcher — Swagger UI Custom Theme
+   Earth & Trust: Terracotta + Forest Green
+   ============================================ */
+
+/* --- CSS Variables --- */
+:root {
+  --aidm-primary: #C1694F;
+  --aidm-primary-dark: #9E4A34;
+  --aidm-secondary: #3B6B4B;
+  --aidm-secondary-dark: #2A4D36;
+  --aidm-bg: #FAF7F2;
+  --aidm-surface: #FFFFFF;
+  --aidm-text: #2C2C2C;
+  --aidm-text-muted: #6B6B6B;
+  --aidm-border: #E8E2D9;
+  --aidm-warning: #D4A843;
+  --aidm-error: #C14F4F;
+}
+
+/* --- Page Background --- */
+html, body {
+  background-color: var(--aidm-bg) !important;
+}
+
+.swagger-ui {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+  color: var(--aidm-text) !important;
+}
+
+/* --- Top Bar --- */
+.swagger-ui .topbar {
+  background-color: var(--aidm-primary) !important;
+  padding: 12px 0 !important;
+  border-bottom: 3px solid var(--aidm-primary-dark) !important;
+}
+
+.swagger-ui .topbar .download-url-wrapper .select-label {
+  color: #FAF7F2 !important;
+}
+
+.swagger-ui .topbar .download-url-wrapper input[type=text] {
+  border-color: rgba(255,255,255,0.3) !important;
+  background: rgba(255,255,255,0.1) !important;
+  color: #fff !important;
+}
+
+.swagger-ui .topbar a {
+  color: #FAF7F2 !important;
+}
+
+.swagger-ui .topbar svg {
+  fill: #FAF7F2 !important;
+}
+
+/* --- Info Header --- */
+.swagger-ui .info {
+  margin: 30px 0 !important;
+}
+
+.swagger-ui .info .title {
+  color: var(--aidm-text) !important;
+  font-weight: 700 !important;
+}
+
+.swagger-ui .info .description p {
+  color: var(--aidm-text-muted) !important;
+}
+
+.swagger-ui .info a {
+  color: var(--aidm-primary) !important;
+}
+
+.swagger-ui .info a:hover {
+  color: var(--aidm-primary-dark) !important;
+}
+
+/* --- Operation Blocks --- */
+.swagger-ui .opblock-tag {
+  color: var(--aidm-text) !important;
+  border-bottom: 1px solid var(--aidm-border) !important;
+  font-weight: 600 !important;
+}
+
+.swagger-ui .opblock-tag:hover {
+  background: rgba(193, 105, 79, 0.04) !important;
+}
+
+/* GET */
+.swagger-ui .opblock.opblock-get {
+  background: rgba(59, 107, 75, 0.06) !important;
+  border-color: var(--aidm-secondary) !important;
+}
+
+.swagger-ui .opblock.opblock-get .opblock-summary-method {
+  background: var(--aidm-secondary) !important;
+}
+
+.swagger-ui .opblock.opblock-get .opblock-summary {
+  border-color: var(--aidm-secondary) !important;
+}
+
+/* POST */
+.swagger-ui .opblock.opblock-post {
+  background: rgba(193, 105, 79, 0.06) !important;
+  border-color: var(--aidm-primary) !important;
+}
+
+.swagger-ui .opblock.opblock-post .opblock-summary-method {
+  background: var(--aidm-primary) !important;
+}
+
+.swagger-ui .opblock.opblock-post .opblock-summary {
+  border-color: var(--aidm-primary) !important;
+}
+
+/* PUT */
+.swagger-ui .opblock.opblock-put {
+  background: rgba(212, 168, 67, 0.06) !important;
+  border-color: var(--aidm-warning) !important;
+}
+
+.swagger-ui .opblock.opblock-put .opblock-summary-method {
+  background: var(--aidm-warning) !important;
+}
+
+.swagger-ui .opblock.opblock-put .opblock-summary {
+  border-color: var(--aidm-warning) !important;
+}
+
+/* DELETE */
+.swagger-ui .opblock.opblock-delete {
+  background: rgba(193, 79, 79, 0.06) !important;
+  border-color: var(--aidm-error) !important;
+}
+
+.swagger-ui .opblock.opblock-delete .opblock-summary-method {
+  background: var(--aidm-error) !important;
+}
+
+.swagger-ui .opblock.opblock-delete .opblock-summary {
+  border-color: var(--aidm-error) !important;
+}
+
+/* PATCH */
+.swagger-ui .opblock.opblock-patch {
+  background: rgba(42, 77, 54, 0.06) !important;
+  border-color: var(--aidm-secondary-dark) !important;
+}
+
+.swagger-ui .opblock.opblock-patch .opblock-summary-method {
+  background: var(--aidm-secondary-dark) !important;
+}
+
+.swagger-ui .opblock.opblock-patch .opblock-summary {
+  border-color: var(--aidm-secondary-dark) !important;
+}
+
+/* --- Method Labels --- */
+.swagger-ui .opblock .opblock-summary-method {
+  border-radius: 4px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  min-width: 70px !important;
+  text-align: center !important;
+  padding: 6px 12px !important;
+  color: #fff !important;
+}
+
+/* --- Buttons --- */
+.swagger-ui .btn.authorize {
+  color: var(--aidm-primary) !important;
+  border-color: var(--aidm-primary) !important;
+  background: transparent !important;
+  font-weight: 600 !important;
+}
+
+.swagger-ui .btn.authorize:hover {
+  background: rgba(193, 105, 79, 0.08) !important;
+}
+
+.swagger-ui .btn.authorize svg {
+  fill: var(--aidm-primary) !important;
+}
+
+.swagger-ui .btn.execute {
+  background-color: var(--aidm-primary) !important;
+  border-color: var(--aidm-primary) !important;
+  color: #fff !important;
+}
+
+.swagger-ui .btn.execute:hover {
+  background-color: var(--aidm-primary-dark) !important;
+}
+
+.swagger-ui .btn.cancel {
+  color: var(--aidm-error) !important;
+  border-color: var(--aidm-error) !important;
+}
+
+/* --- Models --- */
+.swagger-ui section.models {
+  border: 1px solid var(--aidm-border) !important;
+  border-radius: 6px !important;
+}
+
+.swagger-ui section.models h4 {
+  color: var(--aidm-text) !important;
+}
+
+.swagger-ui .model-box {
+  background: var(--aidm-surface) !important;
+}
+
+/* --- Response Section --- */
+.swagger-ui .responses-inner h4,
+.swagger-ui .responses-inner h5 {
+  color: var(--aidm-text) !important;
+}
+
+.swagger-ui table thead tr th {
+  color: var(--aidm-text) !important;
+  border-bottom: 1px solid var(--aidm-border) !important;
+}
+
+.swagger-ui table tbody tr td {
+  color: var(--aidm-text) !important;
+  border-bottom: 1px solid var(--aidm-border) !important;
+}
+
+/* --- Parameter inputs --- */
+.swagger-ui input[type=text],
+.swagger-ui textarea,
+.swagger-ui select {
+  border-color: var(--aidm-border) !important;
+  border-radius: 4px !important;
+}
+
+.swagger-ui input[type=text]:focus,
+.swagger-ui textarea:focus {
+  border-color: var(--aidm-primary) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(193, 105, 79, 0.15) !important;
+}
+
+/* --- Auth dialog --- */
+.swagger-ui .dialog-ux .modal-ux-header h3 {
+  color: var(--aidm-text) !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux {
+  border: 1px solid var(--aidm-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(44, 44, 44, 0.12) !important;
+}
+
+/* --- Scrollbar --- */
+.swagger-ui ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb {
+  background: var(--aidm-border);
+  border-radius: 3px;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb:hover {
+  background: var(--aidm-text-muted);
+}
+
+/* --- Code blocks --- */
+.swagger-ui .highlight-code {
+  border-radius: 6px !important;
+}
+
+/* --- Lock icon (authorized) --- */
+.swagger-ui .authorization__btn.locked svg,
+.swagger-ui .authorization__btn.unlocked svg {
+  fill: var(--aidm-primary) !important;
+}
+
+/* --- Server dropdown --- */
+.swagger-ui .scheme-container {
+  background: var(--aidm-surface) !important;
+  border-bottom: 1px solid var(--aidm-border) !important;
+  box-shadow: none !important;
+}
