@@ -1,0 +1,46 @@
+# ===========================
+# AI Donor Matcher — Local Configuration
+# ===========================
+# Copy this file to application-local.properties and fill in your values.
+# That file is gitignored and will override application.properties at runtime.
+#
+# Activate this profile by adding to application.properties:
+#   spring.profiles.active=local
+# Or via env var: SPRING_PROFILES_ACTIVE=local
+
+# ===========================
+# DATABASE (PostgreSQL)
+# ===========================
+spring.datasource.url=jdbc:postgresql://localhost:5432/aidonormatcher
+spring.datasource.username=postgres
+spring.datasource.password=your-db-password
+
+# ===========================
+# JPA / Hibernate
+# ===========================
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+# ===========================
+# JWT
+# ===========================
+jwt.secret=your-256-bit-base64-encoded-secret-here
+jwt.expiration-ms=86400000
+
+# ===========================
+# Email (Gmail SMTP)
+# ===========================
+spring.mail.username=your-gmail@gmail.com
+spring.mail.password=your-gmail-app-password
+
+# ===========================
+# Cloudinary
+# ===========================
+cloudinary.cloud-name=your-cloud-name
+cloudinary.api-key=your-api-key
+cloudinary.api-secret=your-api-secret
+
+# ===========================
+# App
+# ===========================
+app.base-url=http://localhost:3000
