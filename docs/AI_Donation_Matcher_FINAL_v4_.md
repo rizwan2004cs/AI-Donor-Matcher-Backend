@@ -8,7 +8,7 @@
 
 **Final Year Engineering Project | Academic Year 2025–26**
 
-**Stack:** React.js + Spring Boot + PostgreSQL | **Timeline:** 14 Weeks
+**Stack:** React.js + Spring Boot 3.2.5 + Java 21 + PostgreSQL | **Timeline:** 14 Weeks
 
 **All Tools: 100% Free — No Credit Card Required**
 
@@ -496,9 +496,10 @@ Every tool listed below is completely free. No credit card, billing account, or 
 | Frontend | React.js + Tailwind CSS | Component SPA. Three role dashboards. Tailwind responsive styling. React Context API for auth state. 100% free. |
 | Maps | Leaflet.js + OpenStreetMap | Free, open-source. No API key. Colour-coded NGO pins, popups, route polylines. Geolocation API with manual fallback. |
 | Routing | OSRM Public API | Free open-source routing. Returns GeoJSON road route for Leaflet polyline. Suitable for prototype. Self-host or upgrade for production. |
-| Backend | Java + Spring Boot | MVC: Controller/Service/Repository per domain. Spring Data JPA. Monolithic — deliberate, right-sized choice. 100% free. |
-| Database | PostgreSQL | Relational data model. FLOAT lat/lng columns. Haversine native JPA query. PostGIS not needed at prototype scale. 100% free. |
-| Auth | Spring Security + JWT + BCrypt | Role-based endpoint protection. JWT tokens. BCrypt password hashing. No third-party auth service. 100% free. |
+| Backend | Java 21 + Spring Boot 3.2.5 | MVC: Controller/Service/Repository per domain. 11 services, 5 entities, 5 repositories, 9 DTOs fully implemented. Spring Data JPA. Monolithic — deliberate, right-sized choice. 100% free. |
+| Database | PostgreSQL | Relational data model. DOUBLE lat/lng columns. Haversine native JPA query (@Query). PostGIS not needed at prototype scale. 100% free. |
+| Auth | Spring Security + JWT (jjwt 0.12.3) + BCrypt | Role-based endpoint protection. JWT tokens with userId, role, emailVerified claims. BCrypt password hashing. No third-party auth service. 100% free. |
+| Geocoding | Nominatim (OpenStreetMap) | Converts NGO address text to lat/lng coordinates on profile update. Free, no API key required. Used inside NgoService.updateProfile(). |
 | Images | Cloudinary Free Tier | NGO profile photos. 10 GB storage. 25 GB bandwidth/month. No credit card. URL stored in NGO entity. |
 | Email | JavaMail + Gmail SMTP | 500 emails/day free. No credit card. All 12 platform triggers. Replaces SendGrid/AWS SES entirely. |
 | Hosting (FE) | Vercel | Permanent free tier. GitHub auto-deploy. Zero config. |
@@ -660,14 +661,14 @@ public void expireOldPledges() {
 
 1. Donor sets radius to 5km and selects Clothing category. React sends: `GET /api/ngos?lat=X&lng=Y&radius=5&category=CLOTHING&search=`
 2. Spring Security validates JWT. NgoService runs Haversine JPA query with category and search filters.
-3. Returns `NgoDiscoveryDTO` array: `{id, name, distanceKm, trustScore, trustLabel, topNeedItem, topNeedRemaining, pinColor, lat, lng}`
+3. Returns `NgoDiscoveryDTO` array: `{id, name, distanceKm, trustScore, trustTier, topNeedItem, topNeedQuantityRemaining, topNeedUrgency, topNeedCategory, lat, lng, photoUrl}`
 4. If result is empty, React auto-calls same endpoint without radius to get nationwide results.
 5. Leaflet renders colour-coded pins. List sorted by `distanceKm` ASC, then urgency within 2km bands.
 
 **B: Donor Pledges and Gets Navigation**
 
 6. Donor selects need, enters quantity 5. React sends: `POST /api/pledges {needId, quantity:5, JWT}`
-7. `@Transactional`: validate ROLE_DONOR, check remaining >= 5, create Pledge, update `need.quantityPledged += 5`, recalculate need status.
+7. `@Transactional`: validate ROLE_DONOR, check email verified, lock need row with `@Lock(PESSIMISTIC_WRITE)`, check remaining >= quantity, create Pledge (expiresAt = now+48h), update `need.quantityPledged += quantity`, recalculate need status, update NGO `lastActivityAt`.
 8. Response includes `{pledgeId, ngoLat, ngoLng, ngoAddress, ngoEmail, expiresAt}`
 9. React opens Delivery View. Fetches OSRM: `GET https://router.project-osrm.org/route/v1/driving/{donorLng},{donorLat};{ngoLng},{ngoLat}?overview=full&geometries=geojson`
 10. Leaflet draws GeoJSON polyline. Distance and duration displayed. Pledge expiry countdown shown.
@@ -698,6 +699,43 @@ public void expireOldPledges() {
 | Report Submitted | Donor | Report received. Review timeline noted. |
 | 3 Reports on Same NGO | Admin | Urgent review flag. NGO name and link to report queue. |
 
+### 7.7 Backend Implementation Status (as of March 2026)
+
+The Spring Boot backend service layer is **fully implemented and tested**. All unit tests pass.
+
+**Complete (no changes needed):**
+
+| Layer | Count | Components |
+|-------|-------|-----------|
+| Entities | 5 | `User`, `Ngo`, `Need`, `Pledge`, `Report` |
+| Enums | 7 | `Role`, `NgoStatus`, `NeedCategory`, `NeedStatus`, `PledgeStatus`, `TrustTier`, `UrgencyLevel` |
+| Repositories | 5 | `UserRepository`, `NgoRepository`, `NeedRepository`, `PledgeRepository`, `ReportRepository` |
+| DTOs (records) | 9 | `RegisterRequest`, `LoginRequest`, `LoginResponse`, `NgoProfileRequest`, `NgoDiscoveryDTO`, `NeedRequest`, `PledgeRequest`, `PledgeResponse`, `ReportRequest` |
+| Services | 11 | `AuthService`, `NgoService`, `NeedService`, `PledgeService`, `AdminService`, `ReportService`, `TrustScoreService`, `JwtService`, `EmailService`, `CloudinaryService`, `ScheduledJobService` |
+| Config | 4 | `ApplicationConfig`, `SecurityConfig`, `JwtFilter`, `CloudinaryConfig` |
+| Unit Tests | 69 | All passing — 11 test classes, one per service |
+
+**Remaining backend work:**
+
+| Item | Description |
+|------|-------------|
+| `AuthController` | POST /api/auth/register, POST /api/auth/login, GET /api/auth/verify-email, POST /api/auth/resend-verification |
+| `NgoController` | GET/PATCH /api/ngo/profile, GET /api/ngos (discovery), GET /api/ngos/{id} |
+| `NeedController` | POST/PUT/DELETE /api/needs, PATCH /api/needs/{id}/fulfill |
+| `PledgeController` | POST /api/pledges, DELETE /api/pledges/{id}, GET /api/pledges/active, GET /api/pledges/history |
+| `AdminController` | GET/POST /api/admin/ngos/pending, PATCH approve/reject/suspend, GET/PUT/DELETE /api/admin/needs, GET /api/admin/reports, GET /api/admin/stats |
+| `ReportController` | POST /api/ngos/{id}/report |
+| `GlobalExceptionHandler` | `@RestControllerAdvice` — catches `RuntimeException`, `BadCredentialsException`, validation errors |
+
+**Endpoint security (SecurityConfig):**
+- `GET /api/auth/**` — public
+- `GET /api/ngos/**` — public
+- `/api/admin/**` — ROLE_ADMIN only
+- `/api/ngo/**` — ROLE_NGO only
+- `/api/pledges/**` — ROLE_DONOR only
+- Everything else — authenticated
+- CORS origin: `http://localhost:5173` (Vite dev) + Vercel production URL
+
 ---
 
 ## 8. Team Task Division
@@ -706,10 +744,10 @@ Vertical ownership model. Each member owns a feature domain end-to-end from Spri
 
 | Member | Domain | Backend Deliverables | Frontend Deliverables |
 |--------|--------|---------------------|----------------------|
-| **Dinesh** | Security & Admin | Spring Security config, JWT generation/validation, RBAC 3 roles, NGO approval/rejection APIs, admin need moderation APIs, suspension cascade @Transactional, report queue APIs | Login/Registration forms (role selector), email verification screen, admin dashboard: verification queue, report queue, NGO management with suspend/edit |
-| **Gowtham** | Geospatial & Maps | Haversine native JPA query with category/search/radius params, NgoDiscoveryDTO with distanceKm + topNeed + pinColor, OSRM fetch integration in pledge response | Leaflet map, colour-coded pins, pin popups, radius slider, category dropdown filter, NGO search bar, Delivery View with OSRM route polyline |
-| **Sriram** | NGO & Trust Engine | NGO needs CRUD APIs, TrustScoreService (4 inputs + event triggers), need status recalculation service, profile completion gate logic, need expiry @Scheduled, Cloudinary image upload | NGO dashboard (needs management + incoming pledges), NGO profile completion screen with progress bar, public NGO profile with active needs + fulfilled history |
-| **Rizwan** | Donor, Pledge & PWA | Pledge creation @Transactional, pledge state machine, @Scheduled pledge auto-expiry job, donor cancellation API, multi-pledge support, donor dashboard APIs, EmailService (JavaMail + Gmail SMTP config, all 12 triggers) | Donor pledge screen with quantity selector, Delivery View navigation screen, donor dashboard (active pledges + history tabs), shared Tailwind CSS design system, PWA manifest.json + service worker + offline cache |
+| **Dinesh** | Security & Admin | ~~Spring Security config, JWT generation/validation, RBAC 3 roles~~ ✅ Complete. ~~AdminService: NGO approval/rejection, suspension cascade, need moderation, report queue, stats~~ ✅ Complete. **Remaining:** AuthController, AdminController, GlobalExceptionHandler | Login/Registration forms (role selector), email verification screen, admin dashboard: verification queue, report queue, NGO management with suspend/edit |
+| **Gowtham** | Geospatial & Maps | ~~Haversine native JPA query with category/search/radius params~~ ✅ Complete. ~~NgoDiscoveryDTO with distanceKm + topNeed + trustTier + photoUrl~~ ✅ Complete. **Remaining:** NgoController (discovery endpoint) | Leaflet map, colour-coded pins, pin popups, radius slider, category dropdown filter, NGO search bar, Delivery View with OSRM route polyline |
+| **Sriram** | NGO & Trust Engine | ~~NgoService, NeedService, TrustScoreService, CloudinaryService~~ ✅ Complete. ~~Profile completion gate, Nominatim geocoding, ScheduledJobService (need expiry)~~ ✅ Complete. **Remaining:** NeedController, NgoController (profile endpoints) | NGO dashboard (needs management + incoming pledges), NGO profile completion screen with progress bar, public NGO profile with active needs + fulfilled history |
+| **Rizwan** | Donor, Pledge & PWA | ~~PledgeService (@Transactional + PESSIMISTIC_WRITE lock), ScheduledJobService (pledge auto-expiry), EmailService (all 12 triggers via JavaMail)~~ ✅ Complete. **Remaining:** PledgeController, ReportController | Donor pledge screen with quantity selector, Delivery View navigation screen, donor dashboard (active pledges + history tabs), shared Tailwind CSS design system, PWA manifest.json + service worker + offline cache |
 
 **Shared Responsibilities:**
 PostgreSQL ER schema design — Week 1, before any feature work | REST API contract documentation agreed before parallel development | Seed data setup: 2 verified NGOs, 3 donor accounts, sample needs and pledges for demo | Final deployment: Vercel + Render + Supabase/Neon | End-to-end demo run-through and panel preparation
@@ -737,40 +775,40 @@ If the panel day arrives and only Tier 1 is complete — you still have a workin
 
 ### Tier 1 — Core Loop (Must Ship)
 
-| # | Task | Owner | Priority |
-|---|------|-------|----------|
-| 1 | User registration + email verification (Donor and NGO flows) | Dinesh | P0 |
-| 2 | JWT login + role-based access control for 3 roles | Dinesh | P0 |
-| 3 | Admin verifies NGO: approve/reject from pending queue | Dinesh | P0 |
-| 4 | NGO profile completion gate + go-live when complete | Sriram | P0 |
-| 5 | NGO posts, edits, and closes a need (category + quantity) | Sriram | P0 |
-| 6 | Donor discovers NGOs on map via Haversine JPA query | Gowtham | P0 |
-| 7 | Donor pledges against a need (single donor, full quantity) | Rizwan | P0 |
-| 8 | NGO marks fulfilled + trust score recalculates | Sriram | P0 |
+| # | Task | Owner | Priority | Status |
+|---|------|-------|----------|--------|
+| 1 | User registration + email verification (Donor and NGO flows) | Dinesh | P0 | ✅ Service done — AuthController needed |
+| 2 | JWT login + role-based access control for 3 roles | Dinesh | P0 | ✅ Service + SecurityConfig done — AuthController needed |
+| 3 | Admin verifies NGO: approve/reject from pending queue | Dinesh | P0 | ✅ Service done — AdminController needed |
+| 4 | NGO profile completion gate + go-live when complete | Sriram | P0 | ✅ Service done — NgoController needed |
+| 5 | NGO posts, edits, and closes a need (category + quantity) | Sriram | P0 | ✅ Service done — NeedController needed |
+| 6 | Donor discovers NGOs on map via Haversine JPA query | Gowtham | P0 | ✅ Service done — NgoController discovery endpoint needed |
+| 7 | Donor pledges against a need (single donor, full quantity) | Rizwan | P0 | ✅ Service done — PledgeController needed |
+| 8 | NGO marks fulfilled + trust score recalculates | Sriram | P0 | ✅ Service done — NeedController fulfill endpoint needed |
 
 ### Tier 2 — Extended Prototype (Build After Tier 1 is Live)
 
-| # | Task | Owner | Priority |
-|---|------|-------|----------|
-| 9 | Pledge auto-expiry @Scheduled job (48hr threshold) | Rizwan | P1 |
-| 10 | Donor can cancel their own pledge anytime | Rizwan | P1 |
-| 11 | Split pledging: quantity tracking + @Transactional | Rizwan | P1 |
-| 12 | Email notifications — pledge confirmation + fulfillment (JavaMail) | Rizwan | P1 |
-| 13 | Category filter + radius slider on discovery map | Gowtham | P1 |
-| 14 | Colour-coded pins by category on Leaflet map | Gowtham | P1 |
-| 15 | NGO search bar — name search overrides radius | Gowtham | P1 |
-| 16 | Pin popup with top need + remaining quantity | Gowtham | P1 |
-| 17 | Post-pledge delivery view: Leaflet + OSRM road route | Gowtham | P1 |
-| 18 | Donor dashboard: active pledges tab + history tab | Rizwan | P1 |
-| 19 | NGO fulfilled history on public profile | Sriram | P1 |
-| 20 | NGO profile photo upload via Cloudinary free tier | Sriram | P1 |
-| 21 | Need expiry date + auto-close @Scheduled job | Sriram | P1 |
-| 22 | Donor report NGO + report queue in admin dashboard | Dinesh | P1 |
-| 23 | Admin moderation: edit or remove any NGO need | Dinesh | P1 |
-| 24 | Suspension cascade — atomic @Transactional operation | Dinesh | P1 |
-| 25 | Default list sort: distance ASC + urgency secondary | Gowtham | P1 |
-| 26 | PWA manifest.json + app icons (makes app installable on Android and iOS) | Rizwan | P1 |
-| 27 | Service worker + basic offline cache (last loaded map + visited NGO profiles) | Rizwan | P1 |
+| # | Task | Owner | Priority | Status |
+|---|------|-------|----------|--------|
+| 9 | Pledge auto-expiry @Scheduled job (48hr threshold) | Rizwan | P1 | ✅ ScheduledJobService done |
+| 10 | Donor can cancel their own pledge anytime | Rizwan | P1 | ✅ PledgeService done — PledgeController needed |
+| 11 | Split pledging: quantity tracking + @Transactional | Rizwan | P1 | ✅ PledgeService + PESSIMISTIC_WRITE lock done |
+| 12 | Email notifications — pledge confirmation + fulfillment (JavaMail) | Rizwan | P1 | ✅ All 12 triggers in EmailService done |
+| 13 | Category filter + radius slider on discovery map | Gowtham | P1 | ✅ NgoRepository.findNearby() supports params — frontend needed |
+| 14 | Colour-coded pins by category on Leaflet map | Gowtham | P1 | ✅ topNeedCategory in NgoDiscoveryDTO — frontend needed |
+| 15 | NGO search bar — name search overrides radius | Gowtham | P1 | ✅ search param in NgoService.discoverNgos() done |
+| 16 | Pin popup with top need + remaining quantity | Gowtham | P1 | ✅ NgoDiscoveryDTO includes top need fields — frontend needed |
+| 17 | Post-pledge delivery view: Leaflet + OSRM road route | Gowtham | P1 | ✅ PledgeResponse includes ngoLat, ngoLng, ngoAddress — frontend needed |
+| 18 | Donor dashboard: active pledges tab + history tab | Rizwan | P1 | ✅ PledgeService.getActivePledges() + getPledgeHistory() done — PledgeController needed |
+| 19 | NGO fulfilled history on public profile | Sriram | P1 | ✅ NeedRepository queries support FULFILLED status filter |
+| 20 | NGO profile photo upload via Cloudinary free tier | Sriram | P1 | ✅ CloudinaryService + NgoService.updatePhotoUrl() done |
+| 21 | Need expiry date + auto-close @Scheduled job | Sriram | P1 | ✅ ScheduledJobService.processNeedExpiry() done |
+| 22 | Donor report NGO + report queue in admin dashboard | Dinesh | P1 | ✅ ReportService done — ReportController + AdminController needed |
+| 23 | Admin moderation: edit or remove any NGO need | Dinesh | P1 | ✅ AdminService.editNeed() + removeNeed() done — AdminController needed |
+| 24 | Suspension cascade — atomic @Transactional operation | Dinesh | P1 | ✅ AdminService.suspendNgo() done — AdminController needed |
+| 25 | Default list sort: distance ASC + urgency secondary | Gowtham | P1 | ✅ NgoRepository native query orders by distance_km — frontend list sort needed |
+| 26 | PWA manifest.json + app icons (makes app installable on Android and iOS) | Rizwan | P1 | Frontend task |
+| 27 | Service worker + basic offline cache (last loaded map + visited NGO profiles) | Rizwan | P1 | Frontend task |
 
 ---
 
@@ -809,7 +847,7 @@ These are anticipated panel questions and the team's prepared responses, grounde
 | **What exactly is the AI component?** | AI is not synonymous with machine learning. The Trust Scoring Engine makes automated multi-factor credibility assessments that would otherwise require a human to review documents, activity patterns, and fulfillment records. We chose rule-based AI over ML for three reasons: insufficient training data at prototype scale; the necessity for full auditability in a trust-sensitive domain; and honesty about the system's capabilities. We can explain exactly why any NGO received its specific score. |
 | **Why only two active user roles? No volunteers?** | Volunteer coordination was removed after identifying that task abandonment creates a state machine edge case we cannot reliably resolve without real users. The core value is fully intact: donors discover verified NGOs, pledge against real needs, and deliver directly. Volunteer coordination is documented as the highest-priority future scope item with the @Scheduled expiry mechanism already fully designed and specified. |
 | **What if a donor pledges but never delivers?** | A Spring @Scheduled job runs every hour and checks all ACTIVE pledges. Any pledge older than 48 hours is automatically expired: pledged quantity is restored to the need, need status recalculates, and the donor receives an email notification. This is the same pattern used in e-commerce cart reservation systems. |
-| **What prevents two donors from over-pledging simultaneously?** | Pledge creation is a @Transactional Spring operation. When a donor submits a pledge, the service checks remaining quantity and subtracts atomically within the transaction. If two donors submit at the same moment, one waits while the other completes — preventing over-pledging at the database transaction level. |
+| **What prevents two donors from over-pledging simultaneously?** | Pledge creation uses `@Lock(PESSIMISTIC_WRITE)` on the need row inside a `@Transactional` Spring operation. When a donor submits a pledge, the service acquires a database-level lock on that need row before checking and subtracting quantity. If two donors submit at the same moment, one waits while the other holds the lock — preventing over-pledging at the database row level. |
 | **How do you verify physical delivery?** | We do not — and we are transparent about this. Fulfillment is recorded when the NGO marks receipt. The trust score penalises NGOs with low fulfillment rates. Admins can investigate and suspend fraudulent accounts. OTP handover confirmation in future scope would add lightweight physical verification without new infrastructure. |
 | **Why not use PostGIS for location queries?** | For prototype-scale data, a Haversine formula in a native Spring Data JPA query achieves identical results with zero additional database configuration. PostGIS is appropriate when spatial indexing is needed for performance at scale — a decision that should be driven by real usage data, not made speculatively. |
 | **Isn't a monolith just a shortcut?** | No — it is a deliberate, right-sized decision. All three roles share the same core entities: NGO, Need, and Pledge. Splitting into microservices would require distributed transactions and an API gateway with no user-facing benefit at this scale. Spring Boot's Controller-Service-Repository layers provide equivalent logical separation. Horizontal scaling behind a load balancer is available when real usage data justifies it. |
