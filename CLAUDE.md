@@ -67,3 +67,23 @@ Project-specific skills are in `docs/skills/`. Each skill has a `SKILL.md` with 
 - `api-design` — 27 endpoints, response formats, Swagger setup
 - `database-entity-patterns` — Entity relationships, JPA patterns, repository queries
 - `security-auth-patterns` — JWT flow, role-based access, SecurityConfig guide
+
+## Session Start (run before touching any code)
+```bash
+git checkout main
+git fetch origin
+git status
+git pull origin main
+```
+Returning to a feature branch? Run `git rebase origin/main` after switching back.
+Full workflow: see docs/CONTRIBUTING.md
+
+## AI Agent Instruction Files
+| File | Agent |
+|------|-------|
+| `.github/copilot-instructions.md` | GitHub Copilot |
+| `.cursorrules` | Cursor |
+| `.windsurfrules` | Windsurf |
+| `CLAUDE.md` | Claude Code |
+| `.clinerules` | Cline |
+| `AGENTS.md` | OpenAI Codex |

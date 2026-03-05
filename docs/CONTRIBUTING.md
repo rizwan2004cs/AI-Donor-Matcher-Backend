@@ -4,6 +4,30 @@ This guide explains how to pick up a feature from [`FEATURES.md`](./FEATURES.md)
 
 ---
 
+## Before Every Session (Run These First)
+
+Every time you open the project — before touching any code — run these commands:
+
+```bash
+git checkout main          # make sure you're on main
+git fetch origin           # download latest remote state (safe, no merge)
+git status                 # check if you have any uncommitted local changes
+git pull origin main       # fast-forward your local main to match remote
+```
+
+If you're continuing work on a feature branch:
+
+```bash
+git checkout feature/<area>/<description>   # switch back to your branch
+git fetch origin                            # check if main has moved ahead
+git rebase origin/main                      # replay your commits on top of updated main
+```
+
+> **Why `git fetch` before `git pull`?**
+> `fetch` downloads changes without merging anything, letting you see what's new before integrating. `pull` = `fetch` + `merge` in one step. Both are fine for solo work; `fetch` first gives you a chance to inspect before merging.
+
+---
+
 ## Prerequisites
 
 - Java 21 (JDK installed at `C:\Program Files\Java\jdk-21`)

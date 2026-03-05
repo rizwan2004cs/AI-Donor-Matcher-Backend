@@ -43,3 +43,23 @@ See docs/skills/ for detailed implementation guides.
 
 ## Build
 mvn clean compile | mvn test | mvn spring-boot:run
+
+## Session Start (run before touching any code)
+```bash
+git checkout main
+git fetch origin
+git status
+git pull origin main
+```
+Returning to a feature branch? Run `git rebase origin/main` after switching back.
+Full workflow: see docs/CONTRIBUTING.md
+
+## AI Agent Instruction Files
+| File | Agent |
+|------|-------|
+| `.github/copilot-instructions.md` | GitHub Copilot |
+| `.cursorrules` | Cursor |
+| `.windsurfrules` | Windsurf |
+| `CLAUDE.md` | Claude Code |
+| `.clinerules` | Cline |
+| `AGENTS.md` | OpenAI Codex |
