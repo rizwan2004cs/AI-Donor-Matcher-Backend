@@ -28,129 +28,134 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-    @Mock private UserRepository userRepository;
-    @Mock private NgoRepository ngoRepository;
-    @Mock private PasswordEncoder passwordEncoder;
-    @Mock private JwtService jwtService;
-    @Mock private EmailService emailService;
+        @Mock
+        private UserRepository userRepository;
+        @Mock
+        private NgoRepository ngoRepository;
+        @Mock
+        private PasswordEncoder passwordEncoder;
+        @Mock
+        private JwtService jwtService;
+        @Mock
+        private EmailService emailService;
 
-    @InjectMocks
-    private AuthService authService;
+        @InjectMocks
+        private AuthService authService;
 
-    // ─── register ────────────────────────────────────────────────────────────
+        // ─── register ────────────────────────────────────────────────────────────
 
-    @Test
-    void register_donorSucceeds_savesUserAndSendsEmail() {
-        RegisterRequest req = new RegisterRequest(
-                "Alice", "alice@example.com", "password123", Role.DONOR, "London");
-        when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
-        when(passwordEncoder.encode("password123")).thenReturn("encoded");
+        @Test
+        void register_donorSucceeds_savesUserAndSendsEmail() {
+                RegisterRequest req = new RegisterRequest(
+                                "Alice", "alice@example.com", "password123", Role.DONOR, "London");
+                when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
+                when(passwordEncoder.encode("password123")).thenReturn("encoded");
 
-        authService.register(req);
+                authService.register(req);
 
-        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(captor.capture());
-        User saved = captor.getValue();
-        assertThat(saved.getEmail()).isEqualTo("alice@example.com");
-        assertThat(saved.getPassword()).isEqualTo("encoded");
-        assertThat(saved.getRole()).isEqualTo(Role.DONOR);
-        assertThat(saved.getEmailVerificationToken()).isNotNull();
-        verify(emailService).sendVerificationEmail(eq(saved), anyString());
-        verifyNoInteractions(ngoRepository);
-    }
+                ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+                verify(userRepository).save(captor.capture());
+                User saved = captor.getValue();
+                assertThat(saved.getEmail()).isEqualTo("alice@example.com");
+                assertThat(saved.getPassword()).isEqualTo("encoded");
+                assertThat(saved.getRole()).isEqualTo(Role.DONOR);
+                assertThat(saved.getEmailVerificationToken()).isNotNull();
+                verify(emailService).sendVerificationEmail(eq(saved), anyString());
+                verifyNoInteractions(ngoRepository);
+        }
 
-    @Test
-    void register_ngoRoleAlsoCreatesNgoEntity() {
-        RegisterRequest req = new RegisterRequest(
-                "NGO Org", "ngo@org.com", "secret", Role.NGO, null);
-        when(userRepository.existsByEmail("ngo@org.com")).thenReturn(false);
-        when(passwordEncoder.encode("secret")).thenReturn("enc");
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        @Test
+        void register_ngoRoleAlsoCreatesNgoEntity() {
+                RegisterRequest req = new RegisterRequest(
+                                "NGO Org", "ngo@org.com", "secret", Role.NGO, null);
+                when(userRepository.existsByEmail("ngo@org.com")).thenReturn(false);
+                when(passwordEncoder.encode("secret")).thenReturn("enc");
+                when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        authService.register(req);
+                authService.register(req);
 
-        verify(ngoRepository).save(any(Ngo.class));
-        ArgumentCaptor<Ngo> ngoCaptor = ArgumentCaptor.forClass(Ngo.class);
-        verify(ngoRepository).save(ngoCaptor.capture());
-        assertThat(ngoCaptor.getValue().getStatus()).isEqualTo(NgoStatus.PENDING);
-    }
+                verify(ngoRepository).save(any(Ngo.class));
+                ArgumentCaptor<Ngo> ngoCaptor = ArgumentCaptor.forClass(Ngo.class);
+                verify(ngoRepository).save(ngoCaptor.capture());
+                assertThat(ngoCaptor.getValue().getStatus()).isEqualTo(NgoStatus.PENDING);
+        }
 
-    @Test
-    void register_duplicateEmail_throwsRuntimeException() {
-        RegisterRequest req = new RegisterRequest(
-                "Alice", "alice@example.com", "pw", Role.DONOR, null);
-        when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
+        @Test
+        void register_duplicateEmail_throwsRuntimeException() {
+                RegisterRequest req = new RegisterRequest(
+                                "Alice", "alice@example.com", "pw", Role.DONOR, null);
+                when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> authService.register(req))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Email already registered");
-    }
+                assertThatThrownBy(() -> authService.register(req))
+                                .isInstanceOf(RuntimeException.class)
+                                .hasMessageContaining("Email already registered");
+        }
 
-    // ─── verifyEmail ─────────────────────────────────────────────────────────
+        // ─── verifyEmail ─────────────────────────────────────────────────────────
 
-    @Test
-    void verifyEmail_validToken_setsEmailVerifiedAndClearsToken() {
-        User user = User.builder()
-                .id(1L).email("test@test.com")
-                .emailVerificationToken("abc-token")
-                .emailVerified(false)
-                .build();
-        when(userRepository.findByEmailVerificationToken("abc-token"))
-                .thenReturn(Optional.of(user));
+        @Test
+        void verifyEmail_validToken_setsEmailVerifiedAndClearsToken() {
+                User user = User.builder()
+                                .id(1L).email("test@test.com")
+                                .emailVerificationToken("abc-token")
+                                .emailVerified(false)
+                                .build();
+                when(userRepository.findByEmailVerificationToken("abc-token"))
+                                .thenReturn(Optional.of(user));
 
-        authService.verifyEmail("abc-token");
+                authService.verifyEmail("abc-token");
 
-        assertThat(user.isEmailVerified()).isTrue();
-        assertThat(user.getEmailVerificationToken()).isNull();
-        verify(userRepository).save(user);
-    }
+                assertThat(user.isEmailVerified()).isTrue();
+                assertThat(user.getEmailVerificationToken()).isNull();
+                verify(userRepository).save(user);
+        }
 
-    @Test
-    void verifyEmail_invalidToken_throwsRuntimeException() {
-        when(userRepository.findByEmailVerificationToken("bad-token"))
-                .thenReturn(Optional.empty());
+        @Test
+        void verifyEmail_invalidToken_throwsRuntimeException() {
+                when(userRepository.findByEmailVerificationToken("bad-token"))
+                                .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.verifyEmail("bad-token"))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Invalid verification token");
-    }
+                assertThatThrownBy(() -> authService.verifyEmail("bad-token"))
+                                .isInstanceOf(RuntimeException.class)
+                                .hasMessageContaining("Invalid verification token");
+        }
 
-    // ─── login ───────────────────────────────────────────────────────────────
+        // ─── login ───────────────────────────────────────────────────────────────
 
-    @Test
-    void login_validCredentials_returnsLoginResponseWithToken() {
-        User user = User.builder()
-                .id(1L).email("alice@example.com").password("encoded")
-                .fullName("Alice").role(Role.DONOR).emailVerified(true)
-                .build();
-        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("password123", "encoded")).thenReturn(true);
-        when(jwtService.generateToken(user)).thenReturn("jwt-token-abc");
+        @Test
+        void login_validCredentials_returnsLoginResponseWithToken() {
+                User user = User.builder()
+                                .id(1L).email("alice@example.com").password("encoded")
+                                .fullName("Alice").role(Role.DONOR).emailVerified(true)
+                                .build();
+                when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+                when(passwordEncoder.matches("password123", "encoded")).thenReturn(true);
+                when(jwtService.generateToken(user)).thenReturn("jwt-token-abc");
 
-        LoginResponse resp = authService.login(new LoginRequest("alice@example.com", "password123"));
+                LoginResponse resp = authService.login(new LoginRequest("alice@example.com", "password123"));
 
-        assertThat(resp.token()).isEqualTo("jwt-token-abc");
-        assertThat(resp.email()).isEqualTo("alice@example.com");
-        assertThat(resp.role()).isEqualTo("DONOR");
-    }
+                assertThat(resp.token()).isEqualTo("jwt-token-abc");
+                assertThat(resp.user().email()).isEqualTo("alice@example.com");
+                assertThat(resp.user().role()).isEqualTo("DONOR");
+        }
 
-    @Test
-    void login_wrongPassword_throwsBadCredentialsException() {
-        User user = User.builder()
-                .id(1L).email("alice@example.com").password("encoded")
-                .role(Role.DONOR).build();
-        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("wrong", "encoded")).thenReturn(false);
+        @Test
+        void login_wrongPassword_throwsBadCredentialsException() {
+                User user = User.builder()
+                                .id(1L).email("alice@example.com").password("encoded")
+                                .role(Role.DONOR).build();
+                when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+                when(passwordEncoder.matches("wrong", "encoded")).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest("alice@example.com", "wrong")))
-                .isInstanceOf(BadCredentialsException.class);
-    }
+                assertThatThrownBy(() -> authService.login(new LoginRequest("alice@example.com", "wrong")))
+                                .isInstanceOf(BadCredentialsException.class);
+        }
 
-    @Test
-    void login_unknownEmail_throwsBadCredentialsException() {
-        when(userRepository.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
+        @Test
+        void login_unknownEmail_throwsBadCredentialsException() {
+                when(userRepository.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest("nobody@example.com", "pw")))
-                .isInstanceOf(BadCredentialsException.class);
-    }
+                assertThatThrownBy(() -> authService.login(new LoginRequest("nobody@example.com", "pw")))
+                                .isInstanceOf(BadCredentialsException.class);
+        }
 }

@@ -84,13 +84,13 @@ public class AuthService {
 
         String jwt = jwtService.generateToken(user);
 
-        return new LoginResponse(
-                jwt,
+        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole().name(),
-                user.isEmailVerified()
-        );
+                user.isEmailVerified());
+
+        return new LoginResponse(jwt, userInfo);
     }
 }
