@@ -37,4 +37,15 @@ public class AuthController {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Map<String, String>> resendVerification(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Email is required."));
+        }
+        authService.resendVerification(email);
+        return ResponseEntity.ok(Map.of("message", "Verification email resent. Please check your inbox."));
+    }
 }

@@ -23,7 +23,7 @@ All service-layer logic is implemented. The features below each require a **REST
 | 1.1 | Register donor or NGO (with optional document upload) | `POST /api/auth/register` | ✅ |
 | 1.2 | Verify email via token link | `GET /api/auth/verify?token=` | ✅ |
 | 1.3 | Login and receive JWT | `POST /api/auth/login` | ✅ |
-| 1.4 | Resend verification email | `POST /api/auth/resend-verification` | ⬜ |
+| 1.4 | Resend verification email | `POST /api/auth/resend-verification` | ✅ |
 
 ---
 

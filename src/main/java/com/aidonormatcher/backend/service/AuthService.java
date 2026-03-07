@@ -93,4 +93,20 @@ public class AuthService {
 
         return new LoginResponse(jwt, userInfo);
     }
+
+    @Transactional
+    public void resendVerification(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No account found with that email."));
+
+        if (user.isEmailVerified()) {
+            throw new RuntimeException("Email is already verified.");
+        }
+
+        String token = UUID.randomUUID().toString();
+        user.setEmailVerificationToken(token);
+        userRepository.save(user);
+
+        emailService.sendVerificationEmail(user, token);
+    }
 }
