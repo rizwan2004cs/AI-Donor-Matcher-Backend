@@ -15,6 +15,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -28,9 +29,10 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailService emailService;
+    private final CloudinaryService cloudinaryService;
 
     @Transactional
-    public void register(RegisterRequest req) {
+    public void register(RegisterRequest req, MultipartFile document) {
         if (userRepository.existsByEmail(req.email())) {
             throw new RuntimeException("Email already registered.");
         }
@@ -49,14 +51,24 @@ public class AuthService {
         user.setEmailVerificationToken(token);
         userRepository.save(user);
 
-        // If NGO, create linked Ngo entity
+        // If NGO, create linked Ngo entity and Handle document upload
         if (req.role() == Role.NGO) {
+            String docUrl = null;
+            if (document != null && !document.isEmpty()) {
+                try {
+                    docUrl = cloudinaryService.uploadDocument(document);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to upload document: " + e.getMessage());
+                }
+            }
+
             Ngo ngo = Ngo.builder()
                     .user(user)
                     .status(NgoStatus.PENDING)
                     .profileComplete(false)
                     .trustScore(0)
                     .trustTier(TrustTier.NEW)
+                    .documentUrl(docUrl)
                     .createdAt(LocalDateTime.now())
                     .build();
             ngoRepository.save(ngo);

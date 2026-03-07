@@ -51,7 +51,7 @@ class AuthServiceTest {
                 when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
                 when(passwordEncoder.encode("password123")).thenReturn("encoded");
 
-                authService.register(req);
+                authService.register(req, null);
 
                 ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
                 verify(userRepository).save(captor.capture());
@@ -72,7 +72,7 @@ class AuthServiceTest {
                 when(passwordEncoder.encode("secret")).thenReturn("enc");
                 when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-                authService.register(req);
+                authService.register(req, null);
 
                 verify(ngoRepository).save(any(Ngo.class));
                 ArgumentCaptor<Ngo> ngoCaptor = ArgumentCaptor.forClass(Ngo.class);
@@ -86,7 +86,7 @@ class AuthServiceTest {
                                 "Alice", "alice@example.com", "pw", Role.DONOR, null);
                 when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
 
-                assertThatThrownBy(() -> authService.register(req))
+                assertThatThrownBy(() -> authService.register(req, null))
                                 .isInstanceOf(RuntimeException.class)
                                 .hasMessageContaining("Email already registered");
         }

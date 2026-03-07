@@ -37,6 +37,7 @@ public class Ngo {
     private NeedCategory categoryOfWork;
 
     private String photoUrl;
+    private String documentUrl;
 
     @Enumerated(EnumType.STRING)
     private NgoStatus status;

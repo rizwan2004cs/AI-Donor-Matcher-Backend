@@ -19,9 +19,18 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/register")
-    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
+    @PostMapping(value = "/register", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, String>> registerJson(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request, null);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("message", "Registration successful. Please check your email to verify your account."));
+    }
+
+    @PostMapping(value = "/register", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> registerMultipart(
+            @Valid @ModelAttribute RegisterRequest request,
+            @RequestPart(value = "documents", required = false) org.springframework.web.multipart.MultipartFile document) {
+        authService.register(request, document);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("message", "Registration successful. Please check your email to verify your account."));
     }

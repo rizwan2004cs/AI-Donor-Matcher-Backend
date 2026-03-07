@@ -18,8 +18,16 @@ public class CloudinaryService {
     public String uploadPhoto(MultipartFile file) throws IOException {
         Map<?, ?> result = cloudinary.uploader().upload(
                 file.getBytes(),
-                ObjectUtils.asMap("folder", "ai-donor-matcher/ngos")
-        );
+                ObjectUtils.asMap("folder", "ai-donor-matcher/ngos"));
+        return result.get("secure_url").toString();
+    }
+
+    public String uploadDocument(MultipartFile file) throws IOException {
+        Map<?, ?> result = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap(
+                        "folder", "ai-donor-matcher/documents",
+                        "resource_type", "auto"));
         return result.get("secure_url").toString();
     }
 }
