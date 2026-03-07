@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -31,8 +31,49 @@ public class AuthService {
     private final EmailService emailService;
     private final CloudinaryService cloudinaryService;
 
+    private static final int OTP_EXPIRY_MINUTES = 10;
+    private static final int MAX_OTP_ATTEMPTS = 5;
+
+    private String generateOtp() {
+        int code = ThreadLocalRandom.current().nextInt(100000, 1_000_000);
+        return String.valueOf(code);
+    }
+
+    private void startOtpForUser(User user) {
+        String otp = generateOtp();
+        user.setEmailVerificationOtp(otp);
+        user.setEmailVerificationOtpExpiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES));
+        user.setEmailVerificationOtpAttempts(0);
+        userRepository.save(user);
+        emailService.sendVerificationOtpEmail(user, otp);
+    }
+
+    private LoginResponse buildLoginResponse(User user) {
+        String jwt = jwtService.generateToken(user);
+
+        Boolean profileComplete;
+        if (user.getRole() == Role.NGO) {
+            Ngo ngo = ngoRepository.findByUserId(user.getId())
+                    .orElse(null);
+            profileComplete = ngo != null && ngo.isProfileComplete();
+        } else {
+            // Donors are always treated as profile-complete for navigation.
+            profileComplete = Boolean.TRUE;
+        }
+
+        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole().name(),
+                user.isEmailVerified(),
+                profileComplete);
+
+        return new LoginResponse(jwt, userInfo);
+    }
+
     @Transactional
-    public void register(RegisterRequest req, MultipartFile document) {
+    public LoginResponse register(RegisterRequest req, MultipartFile document) {
         if (userRepository.existsByEmail(req.email())) {
             throw new RuntimeException("Email already registered.");
         }
@@ -47,8 +88,6 @@ public class AuthService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        String token = UUID.randomUUID().toString();
-        user.setEmailVerificationToken(token);
         userRepository.save(user);
 
         // If NGO, create linked Ngo entity and Handle document upload
@@ -73,8 +112,8 @@ public class AuthService {
                     .build();
             ngoRepository.save(ngo);
         }
-
-        emailService.sendVerificationEmail(user, token);
+        startOtpForUser(user);
+        return buildLoginResponse(user);
     }
 
     @Transactional
@@ -94,16 +133,7 @@ public class AuthService {
             throw new BadCredentialsException("Invalid email or password.");
         }
 
-        String jwt = jwtService.generateToken(user);
-
-        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.isEmailVerified());
-
-        return new LoginResponse(jwt, userInfo);
+        return buildLoginResponse(user);
     }
 
     @Transactional
@@ -115,10 +145,54 @@ public class AuthService {
             throw new RuntimeException("Email is already verified.");
         }
 
-        String token = UUID.randomUUID().toString();
-        user.setEmailVerificationToken(token);
-        userRepository.save(user);
+        startOtpForUser(user);
+    }
 
-        emailService.sendVerificationEmail(user, token);
+    @Transactional
+    public void sendOtp(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No account found with that email."));
+
+        if (user.isEmailVerified()) {
+            throw new RuntimeException("Email is already verified.");
+        }
+
+        startOtpForUser(user);
+    }
+
+    @Transactional
+    public void verifyOtp(String email, String otp) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No account found with that email."));
+
+        if (user.isEmailVerified()) {
+            return;
+        }
+
+        String storedOtp = user.getEmailVerificationOtp();
+        LocalDateTime expiresAt = user.getEmailVerificationOtpExpiresAt();
+
+        boolean expired = expiresAt == null || expiresAt.isBefore(LocalDateTime.now());
+        boolean mismatch = storedOtp == null || !storedOtp.equals(otp);
+
+        if (expired || mismatch) {
+            Integer attempts = user.getEmailVerificationOtpAttempts();
+            int currentAttempts = attempts != null ? attempts : 0;
+            currentAttempts++;
+            user.setEmailVerificationOtpAttempts(currentAttempts);
+            userRepository.save(user);
+
+            if (currentAttempts >= MAX_OTP_ATTEMPTS) {
+                throw new RuntimeException("Too many invalid attempts. Please request a new code.");
+            }
+
+            throw new RuntimeException("Invalid or expired code.");
+        }
+
+        user.setEmailVerified(true);
+        user.setEmailVerificationOtp(null);
+        user.setEmailVerificationOtpExpiresAt(null);
+        user.setEmailVerificationOtpAttempts(0);
+        userRepository.save(user);
     }
 }

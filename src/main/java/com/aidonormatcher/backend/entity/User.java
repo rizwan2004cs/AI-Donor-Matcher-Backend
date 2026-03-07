@@ -40,6 +40,11 @@ public class User implements UserDetails {
     private String location;
     private LocalDateTime createdAt;
 
+    // OTP-based email verification state
+    private String emailVerificationOtp;
+    private LocalDateTime emailVerificationOtpExpiresAt;
+    private Integer emailVerificationOtpAttempts;
+
     // --- UserDetails implementation ---
 
     @Override

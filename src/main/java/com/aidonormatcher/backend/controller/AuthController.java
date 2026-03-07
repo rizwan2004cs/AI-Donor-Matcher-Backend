@@ -2,6 +2,7 @@ package com.aidonormatcher.backend.controller;
 
 import com.aidonormatcher.backend.dto.LoginRequest;
 import com.aidonormatcher.backend.dto.LoginResponse;
+import com.aidonormatcher.backend.dto.RegisterLoginResponse;
 import com.aidonormatcher.backend.dto.RegisterRequest;
 import com.aidonormatcher.backend.service.AuthService;
 import jakarta.validation.Valid;
@@ -19,20 +20,31 @@ public class AuthController {
 
     private final AuthService authService;
 
+    private static final String REGISTRATION_MESSAGE =
+            "Registration successful. Please check your email to verify your account.";
+
     @PostMapping(value = "/register", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, String>> registerJson(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request, null);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("message", "Registration successful. Please check your email to verify your account."));
+    public ResponseEntity<RegisterLoginResponse> registerJson(@Valid @RequestBody RegisterRequest request) {
+        LoginResponse loginResponse = authService.register(request, null);
+        RegisterLoginResponse body = new RegisterLoginResponse(
+                REGISTRATION_MESSAGE,
+                loginResponse.token(),
+                loginResponse.user()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     @PostMapping(value = "/register", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, String>> registerMultipart(
+    public ResponseEntity<RegisterLoginResponse> registerMultipart(
             @Valid @ModelAttribute RegisterRequest request,
             @RequestPart(value = "documents", required = false) org.springframework.web.multipart.MultipartFile document) {
-        authService.register(request, document);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("message", "Registration successful. Please check your email to verify your account."));
+        LoginResponse loginResponse = authService.register(request, document);
+        RegisterLoginResponse body = new RegisterLoginResponse(
+                REGISTRATION_MESSAGE,
+                loginResponse.token(),
+                loginResponse.user()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     @GetMapping("/verify")
@@ -56,5 +68,28 @@ public class AuthController {
         }
         authService.resendVerification(email);
         return ResponseEntity.ok(Map.of("message", "Verification email resent. Please check your inbox."));
+    }
+
+    @PostMapping("/send-otp")
+    public ResponseEntity<Map<String, String>> sendOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Email is required."));
+        }
+        authService.sendOtp(email);
+        return ResponseEntity.ok(Map.of("message", "Verification code sent"));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Map<String, String>> verifyOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String otp = request.get("otp");
+        if (email == null || email.isBlank() || otp == null || otp.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Email and OTP are required."));
+        }
+        authService.verifyOtp(email, otp);
+        return ResponseEntity.ok(Map.of("message", "Email verified"));
     }
 }

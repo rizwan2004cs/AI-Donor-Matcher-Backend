@@ -36,6 +36,12 @@ public class AdminService {
     public void approveNgo(Long ngoId) {
         Ngo ngo = ngoRepository.findById(ngoId)
                 .orElseThrow(() -> new RuntimeException("NGO not found."));
+        if (!ngo.isProfileComplete()) {
+            throw new RuntimeException("NGO profile must be complete before approval.");
+        }
+        if (!ngo.getUser().isEmailVerified()) {
+            throw new RuntimeException("NGO email must be verified before approval.");
+        }
         ngo.setStatus(NgoStatus.APPROVED);
         ngo.setVerifiedAt(LocalDateTime.now());
         ngoRepository.save(ngo);

@@ -37,6 +37,13 @@ public class EmailService {
                 "Hi " + user.getFullName() + ",\n\nClick to verify:\n" + link);
     }
 
+    public void sendVerificationOtpEmail(User user, String otp) {
+        String body = "Hi " + user.getFullName() + ",\n\n"
+                + "Your AI Donor Matcher verification code is " + otp + ".\n"
+                + "This code is valid for " + 10 + " minutes.\n";
+        send(user.getEmail(), "Your AI Donor Matcher verification code", body);
+    }
+
     public void sendNgoApprovedEmail(Ngo ngo) {
         send(ngo.getContactEmail(), "Your NGO application has been approved",
                 "Congratulations! Complete your profile to go live on the map: "
