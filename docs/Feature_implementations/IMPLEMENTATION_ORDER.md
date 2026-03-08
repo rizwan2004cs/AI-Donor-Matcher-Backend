@@ -50,7 +50,7 @@
 
 | File | Type |
 |------|------|
-| `controller/GlobalExceptionHandler.java` | NEW |
+| controller/GlobalExceptionHandler.java | ✅ DONE (Step 0) |
 
 Maps service-layer exceptions to proper HTTP status codes. All controllers depend on this.
 
@@ -62,10 +62,10 @@ Maps service-layer exceptions to proper HTTP status codes. All controllers depen
 
 | File | Type |
 |------|------|
-| `controller/AuthController.java` | NEW |
+| controller/AuthController.java | ✅ DONE (Step 1) |
 
 Endpoints: register, verify email, login. All public.  
-Feature 1.4 (resend verification) is ⬜ — service method not yet implemented; add last.
+Feature 1.4 (resend verification) is ✅ (service + controller implemented)
 
 **Guide:** `Feature_1_Authentication.md`  
 **Test:** Register a donor → verify email → login → get JWT
@@ -76,7 +76,7 @@ Feature 1.4 (resend verification) is ⬜ — service method not yet implemented;
 
 | File | Type |
 |------|------|
-| `controller/NgoController.java` | NEW |
+| controller/NgoController.java | ✅ DONE (Step 2) |
 
 Endpoints: get/update own profile, upload photo.  
 NGOs must complete profile (all required fields + geocoded address) before appearing on the discovery map.
