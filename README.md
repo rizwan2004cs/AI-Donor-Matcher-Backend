@@ -314,8 +314,22 @@ Test endpoints manually with Postman, curl, or the VS Code REST Client extension
 
 ## Contributing
 
-See the full [Contributing Guide](docs/CONTRIBUTING.md) for detailed instructions. Key points:
+See the full [Contributing Guide](docs/CONTRIBUTING.md) for detailed instructions. 
 
+### Branching Workflow (Crucial!)
+
+To keep the codebase clean, **always start from the `main` branch** when implementing a new feature:
+
+1.  **Switch to main:** `git checkout main`
+2.  **Get latest changes:** `git pull origin main`
+3.  **Create your feature branch:** `git checkout -b feature/<area>/<short-description>`
+4.  **Implement and Commit:** Make your changes and commit them.
+5.  **Push your branch:** `git push -u origin feature/<area>/<short-description>`
+
+> [!IMPORTANT]
+> Never push directly to `main`. Always create a new branch from `main` for your work.
+
+### General Guidelines
 - **Branch naming:** `feature/<area>/<short-description>` or `fix/<area>/<short-description>`
 - **Commit format:** `<type>(<area>): <short summary>` (e.g., `feat(auth): add register and login endpoints`)
 - **Controllers should be thin** — delegate all business logic to the service layer
