@@ -30,6 +30,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final EmailService emailService;
     private final CloudinaryService cloudinaryService;
+    private final RegistrationOtpService registrationOtpService;
 
     private static final int OTP_EXPIRY_MINUTES = 10;
     private static final int MAX_OTP_ATTEMPTS = 5;
@@ -72,18 +73,28 @@ public class AuthService {
         return new LoginResponse(jwt, userInfo);
     }
 
+    public void sendRegistrationOtp(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new RuntimeException("Email already registered.");
+        }
+        String otp = registrationOtpService.generateAndStoreOtp(email);
+        emailService.sendPreRegistrationOtpEmail(email, otp);
+    }
+
     @Transactional
     public LoginResponse register(RegisterRequest req, MultipartFile document) {
         if (userRepository.existsByEmail(req.email())) {
             throw new RuntimeException("Email already registered.");
         }
 
+        registrationOtpService.verifyOtp(req.email(), req.otp());
+
         User user = User.builder()
                 .fullName(req.fullName())
                 .email(req.email())
                 .password(passwordEncoder.encode(req.password()))
                 .role(req.role())
-                .emailVerified(false)
+                .emailVerified(true)
                 .location(req.location())
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -112,7 +123,8 @@ public class AuthService {
                     .build();
             ngoRepository.save(ngo);
         }
-        startOtpForUser(user);
+
+        registrationOtpService.clearOtp(req.email());
         return buildLoginResponse(user);
     }
 

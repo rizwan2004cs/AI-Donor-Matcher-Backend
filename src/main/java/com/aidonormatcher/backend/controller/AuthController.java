@@ -20,8 +20,7 @@ public class AuthController {
 
     private final AuthService authService;
 
-    private static final String REGISTRATION_MESSAGE =
-            "Registration successful. Please check your email to verify your account.";
+    private static final String REGISTRATION_MESSAGE = "Registration successful. Please check your email to verify your account.";
 
     @PostMapping(value = "/register", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<RegisterLoginResponse> registerJson(@Valid @RequestBody RegisterRequest request) {
@@ -29,8 +28,7 @@ public class AuthController {
         RegisterLoginResponse body = new RegisterLoginResponse(
                 REGISTRATION_MESSAGE,
                 loginResponse.token(),
-                loginResponse.user()
-        );
+                loginResponse.user());
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
@@ -42,8 +40,7 @@ public class AuthController {
         RegisterLoginResponse body = new RegisterLoginResponse(
                 REGISTRATION_MESSAGE,
                 loginResponse.token(),
-                loginResponse.user()
-        );
+                loginResponse.user());
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
@@ -68,6 +65,17 @@ public class AuthController {
         }
         authService.resendVerification(email);
         return ResponseEntity.ok(Map.of("message", "Verification email resent. Please check your inbox."));
+    }
+
+    @PostMapping("/send-registration-otp")
+    public ResponseEntity<Map<String, String>> sendRegistrationOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Email is required."));
+        }
+        authService.sendRegistrationOtp(email);
+        return ResponseEntity.ok(Map.of("message", "Verification code sent to your email"));
     }
 
     @PostMapping("/send-otp")

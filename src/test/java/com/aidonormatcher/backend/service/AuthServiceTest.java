@@ -39,6 +39,8 @@ class AuthServiceTest {
         private JwtService jwtService;
         @Mock
         private EmailService emailService;
+        @Mock
+        private RegistrationOtpService registrationOtpService;
 
         @InjectMocks
         private AuthService authService;
@@ -48,7 +50,7 @@ class AuthServiceTest {
         @Test
         void register_donorSucceeds_savesUserAndStartsOtpFlow() {
                 RegisterRequest req = new RegisterRequest(
-                                "Alice", "alice@example.com", "password123", Role.DONOR, "London");
+                                "Alice", "alice@example.com", "password123", Role.DONOR, "London", "123456");
                 when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
                 when(passwordEncoder.encode("password123")).thenReturn("encoded");
                 when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -63,9 +65,9 @@ class AuthServiceTest {
                 assertThat(saved.getEmail()).isEqualTo("alice@example.com");
                 assertThat(saved.getPassword()).isEqualTo("encoded");
                 assertThat(saved.getRole()).isEqualTo(Role.DONOR);
-                assertThat(saved.isEmailVerified()).isFalse();
-                assertThat(saved.getEmailVerificationOtp()).isNotNull();
-                verify(emailService).sendVerificationOtpEmail(eq(saved), anyString());
+                assertThat(saved.isEmailVerified()).isTrue();
+                verify(registrationOtpService).verifyOtp("alice@example.com", "123456");
+                verify(registrationOtpService).clearOtp("alice@example.com");
                 verify(emailService, never()).sendVerificationEmail(any(User.class), anyString());
                 verifyNoInteractions(ngoRepository);
                 assertThat(loginResponse.token()).isEqualTo("jwt-token-abc");
@@ -76,7 +78,7 @@ class AuthServiceTest {
         @Test
         void register_ngoRoleAlsoCreatesNgoEntity() {
                 RegisterRequest req = new RegisterRequest(
-                                "NGO Org", "ngo@org.com", "secret", Role.NGO, null);
+                                "NGO Org", "ngo@org.com", "secret", Role.NGO, null, "123456");
                 when(userRepository.existsByEmail("ngo@org.com")).thenReturn(false);
                 when(passwordEncoder.encode("secret")).thenReturn("enc");
                 when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -95,12 +97,22 @@ class AuthServiceTest {
         @Test
         void register_duplicateEmail_throwsRuntimeException() {
                 RegisterRequest req = new RegisterRequest(
-                                "Alice", "alice@example.com", "pw", Role.DONOR, null);
+                                "Alice", "alice@example.com", "pw", Role.DONOR, null, "123456");
                 when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
 
                 assertThatThrownBy(() -> authService.register(req, null))
                                 .isInstanceOf(RuntimeException.class)
                                 .hasMessageContaining("Email already registered");
+        }
+
+        @Test
+        void sendRegistrationOtp_unregisteredEmail_sendsPreRegistrationOtp() {
+                when(userRepository.existsByEmail("register@new.com")).thenReturn(false);
+                when(registrationOtpService.generateAndStoreOtp("register@new.com")).thenReturn("987654");
+
+                authService.sendRegistrationOtp("register@new.com");
+
+                verify(emailService).sendPreRegistrationOtpEmail("register@new.com", "987654");
         }
 
         // ─── verifyEmail ─────────────────────────────────────────────────────────
