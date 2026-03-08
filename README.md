@@ -222,30 +222,31 @@ src/main/java/com/aidonormatcher/backend/
 
 ---
 
-## Getting Started
+## Getting Started (First-Time Setup)
 
-### Prerequisites
+Follow these complete steps if you are running this repository for the first time.
 
+### 1. Prerequisites
+
+Ensure you have the following installed on your machine:
 - **Java 21** (JDK)
 - **Maven 3.9+**
 - **Git 2.x**
-- **PostgreSQL** database connection (Supabase or Neon free tier recommended)
+- **PostgreSQL** database (Local or cloud-based like Supabase/Neon)
 
-### Clone the Repository
+### 2. Clone the Repository
 
 ```bash
 git clone https://github.com/rizwan2004cs/AI-Donor-Matcher-Backend.git
 cd AI-Donor-Matcher-Backend
 ```
 
----
+### 3. Environment Setup (`application.properties`)
 
-## Environment Variables
-
-Configure `src/main/resources/application.properties` for local development. **Never hardcode secrets** — use environment variables in production.
+Create or update the `src/main/resources/application.properties` file for local development. **Never hardcode secrets** in source control. You will need to replace the placeholders with your actual credentials.
 
 ```properties
-# Database (PostgreSQL — use your Supabase or Neon connection string)
+# Database (PostgreSQL — use your local DB or a cloud string)
 spring.datasource.url=jdbc:postgresql://<host>:<port>/<dbname>?sslmode=require
 spring.datasource.username=<db-user>
 spring.datasource.password=<db-password>
@@ -253,14 +254,14 @@ spring.datasource.driver-class-name=org.postgresql.Driver
 
 # JPA / Hibernate
 spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=false
+spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 
-# JWT
+# JWT (Generate a secure base64 string for local testing)
 jwt.secret=your-256-bit-base64-encoded-secret-here
 jwt.expiration-ms=86400000
 
-# Email (Gmail SMTP)
+# Email (Gmail SMTP — Use an App Password, not your standard password)
 spring.mail.host=smtp.gmail.com
 spring.mail.port=587
 spring.mail.username=your-gmail@gmail.com
@@ -268,30 +269,33 @@ spring.mail.password=your-gmail-app-password
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
 
-# Cloudinary
+# Cloudinary (Sign up for a free tier for image uploads)
 cloudinary.cloud-name=your-cloud-name
 cloudinary.api-key=your-api-key
 cloudinary.api-secret=your-api-secret
 
-# App
-app.base-url=https://your-frontend-url.vercel.app
-spring.servlet.multipart.max-file-size=2MB
-spring.servlet.multipart.max-request-size=2MB
+# App Configuration
+app.base-url=http://localhost:5173 # Or your frontend's running port (e.g., React/Vite)
+spring.servlet.multipart.max-file-size=5MB
+spring.servlet.multipart.max-request-size=5MB
 ```
 
----
+### 4. Build & Run
 
-## Building & Running
+Once your `application.properties` is configured, build and start the server:
 
 ```bash
-# Compile the project
+# Clean and compile the project (downloads maven dependencies)
 mvn clean compile
 
 # Run the application locally
 mvn spring-boot:run
 ```
 
-Test endpoints manually with Postman, curl, or the VS Code REST Client extension.
+By default, the server will start on `http://localhost:8080`.
+
+**Testing the Application:**
+Test endpoints manually with Postman, curl, or the VS Code REST Client extension. Test the `/api/ngos` public discovery endpoint to ensure proper database connectivity.
 
 ---
 
