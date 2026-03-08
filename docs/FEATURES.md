@@ -41,9 +41,9 @@ All service-layer logic is implemented. The features below each require a **REST
 
 | # | Feature | Endpoint | Status |
 |---|---------|----------|--------|
-| 3.1 | Get own NGO profile | `GET /api/ngo/my/profile` | 🔧 |
-| 3.2 | Update own NGO profile (name, address, description, phone, category) | `PUT /api/ngo/my/profile` | 🔧 |
-| 3.3 | Upload NGO profile photo to Cloudinary | `POST /api/ngo/my/photo` | 🔧 |
+| 3.1 | Get own NGO profile | `GET /api/ngo/my/profile` | ✅ |
+| 3.2 | Update own NGO profile (name, address, description, phone, category) | `PUT /api/ngo/my/profile` | ✅ |
+| 3.3 | Upload NGO profile photo to Cloudinary | `POST /api/ngo/my/photo` | ✅ |
 
 ---
 
