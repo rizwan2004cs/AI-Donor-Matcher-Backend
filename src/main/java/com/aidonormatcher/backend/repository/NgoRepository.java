@@ -32,7 +32,11 @@ public interface NgoRepository extends JpaRepository<Ngo, Long> {
               AND n.profile_complete = true
               AND (:category IS NULL OR n.category_of_work = :category)
               AND (:search IS NULL OR LOWER(n.name) LIKE LOWER(CONCAT('%', :search, '%')))
-            HAVING distance_km <= :radius
+              AND (6371 * acos(
+                  cos(radians(:lat)) * cos(radians(n.lat)) *
+                  cos(radians(n.lng) - radians(:lng)) +
+                  sin(radians(:lat)) * sin(radians(n.lat))
+              )) <= :radius
             ORDER BY distance_km ASC
             """, nativeQuery = true)
     List<Object[]> findNearby(

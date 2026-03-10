@@ -5,6 +5,7 @@ import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.User;
 import com.aidonormatcher.backend.service.CloudinaryService;
 import com.aidonormatcher.backend.service.NgoService;
+import com.aidonormatcher.backend.service.ReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
