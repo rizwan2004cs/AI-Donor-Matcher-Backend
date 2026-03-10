@@ -31,9 +31,9 @@ All service-layer logic is implemented. The features below each require a **REST
 
 | # | Feature | Endpoint | Status |
 |---|---------|----------|--------|
-| 2.1 | Discover nearby NGOs via Haversine query (radius, category, search filters) | `GET /api/ngos` | 🔧 |
-| 2.2 | Get full public NGO profile by ID | `GET /api/ngos/{id}` | 🔧 |
-| 2.3 | Donor submits a report against an NGO | `POST /api/ngos/{id}/report` | 🔧 |
+| 2.1 | Discover nearby NGOs via Haversine query (radius, category, search filters) | `GET /api/ngos` | ✅ |
+| 2.2 | Get full public NGO profile by ID | `GET /api/ngos/{id}` | ✅ |
+| 2.3 | Donor submits a report against an NGO | `POST /api/ngos/{id}/report` | ✅ |
 
 ---
 
