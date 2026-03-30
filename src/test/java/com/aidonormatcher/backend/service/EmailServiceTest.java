@@ -12,10 +12,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -70,5 +75,18 @@ class EmailServiceTest {
         verify(mailSender).send(captor.capture());
         assertThat(captor.getValue().getTo()).containsExactly("ngo@org.com");
         assertThat(captor.getValue().getText()).contains("Water");
+    }
+
+    @Test
+    void sendNgoApprovedEmail_whenMailFails_queuesRetryAndDoesNotThrow() {
+        Ngo ngo = Ngo.builder().id(1L).name("Food Bank").contactEmail("food@bank.org").build();
+        doThrow(new MailSendException("quota exceeded"))
+                .doNothing()
+                .when(mailSender).send(any(SimpleMailMessage.class));
+
+        emailService.sendNgoApprovedEmail(ngo);
+        emailService.processQueuedEmails();
+
+        verify(mailSender, times(2)).send(any(SimpleMailMessage.class));
     }
 }

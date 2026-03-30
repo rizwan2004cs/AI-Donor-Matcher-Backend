@@ -6,15 +6,22 @@ import com.aidonormatcher.backend.entity.Pledge;
 import com.aidonormatcher.backend.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Service
 @RequiredArgsConstructor
 public class EmailService {
 
         private final JavaMailSender mailSender;
+        private final Queue<QueuedEmail> retryQueue = new ConcurrentLinkedQueue<>();
+        private static final int MAX_RETRY_ATTEMPTS = 6;
 
         @Value("${spring.mail.username}")
         private String fromEmail;
@@ -35,7 +42,36 @@ public class EmailService {
                 msg.setTo(to);
                 msg.setSubject(subject);
                 msg.setText(body);
-                mailSender.send(msg);
+                sendWithRetry(msg, 0);
+        }
+
+        private void sendWithRetry(SimpleMailMessage msg, int attempts) {
+                try {
+                        mailSender.send(msg);
+                } catch (MailException ex) {
+                        enqueueForRetry(msg, attempts + 1);
+                }
+        }
+
+        private void enqueueForRetry(SimpleMailMessage msg, int attempts) {
+                if (attempts > MAX_RETRY_ATTEMPTS) {
+                        return;
+                }
+
+                retryQueue.offer(new QueuedEmail(new SimpleMailMessage(msg), attempts));
+        }
+
+        @Scheduled(fixedDelay = 900_000)
+        public void processQueuedEmails() {
+                int queuedCount = retryQueue.size();
+                for (int i = 0; i < queuedCount; i++) {
+                        QueuedEmail queuedEmail = retryQueue.poll();
+                        if (queuedEmail == null) {
+                                return;
+                        }
+
+                        sendWithRetry(queuedEmail.message(), queuedEmail.attempts());
+                }
         }
 
         public void sendVerificationEmail(User user, String token) {
@@ -127,5 +163,7 @@ public class EmailService {
                 send(admin.getEmail(), "⚠️ NGO flagged: " + ngo.getName(),
                                 ngo.getName() + " has received 3 or more reports. Review at: "
                                                 + baseUrl + "/dashboard/admin");
+        }
+        private record QueuedEmail(SimpleMailMessage message, int attempts) {
         }
 }

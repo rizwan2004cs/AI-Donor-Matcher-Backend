@@ -151,7 +151,7 @@ class AdminServiceTest {
 
     // ─── getStats ────────────────────────────────────────────────────────────
 
-    @Test
+            @Test
     void getStats_returnsMapWithAllKeys() {
         when(userRepository.count()).thenReturn(10L);
         when(ngoRepository.count()).thenReturn(5L);
