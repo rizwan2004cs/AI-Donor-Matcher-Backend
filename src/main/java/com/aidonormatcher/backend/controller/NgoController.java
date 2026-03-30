@@ -56,4 +56,9 @@ public class NgoController {
             @RequestParam(required = false) String search) {
         return ResponseEntity.ok(ngoService.discoverNgos(lat, lng, radius, category, search));
     }
+
+    @GetMapping("/api/ngos/{id}")
+    public ResponseEntity<Ngo> getNgoById(@PathVariable Long id) {
+        return ResponseEntity.ok(ngoService.getNgoById(id));
+    }
 }
