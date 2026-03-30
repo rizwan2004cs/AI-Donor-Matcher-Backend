@@ -33,6 +33,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ngos/**").permitAll()
                         // Role-restricted
+                        .requestMatchers(HttpMethod.POST, "/api/needs").hasRole("NGO")
+                        .requestMatchers(HttpMethod.PUT, "/api/needs/**").hasRole("NGO")
+                        .requestMatchers(HttpMethod.DELETE, "/api/needs/**").hasRole("NGO")
+                        .requestMatchers(HttpMethod.PATCH, "/api/needs/**").hasRole("NGO")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/ngo/**").hasRole("NGO")
                         .requestMatchers("/api/pledges/**").hasRole("DONOR")
