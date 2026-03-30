@@ -21,19 +21,22 @@ public interface NgoRepository extends JpaRepository<Ngo, Long> {
     List<Ngo> findByStatus(NgoStatus status);
 
     @Query(value = """
-            SELECT n.*,
-            (6371 * acos(
-                cos(radians(:lat)) * cos(radians(n.lat)) *
-                cos(radians(n.lng) - radians(:lng)) +
-                sin(radians(:lat)) * sin(radians(n.lat))
-            )) AS distance_km
-            FROM ngos n
-            WHERE n.status = 'APPROVED'
-              AND n.profile_complete = true
-              AND (:category IS NULL OR n.category_of_work = :category)
-              AND (:search IS NULL OR LOWER(n.name) LIKE LOWER(CONCAT('%', :search, '%')))
-            HAVING distance_km <= :radius
-            ORDER BY distance_km ASC
+            SELECT *
+            FROM (
+                SELECT n.*,
+                (6371 * acos(
+                    cos(radians(:lat)) * cos(radians(n.lat)) *
+                    cos(radians(n.lng) - radians(:lng)) +
+                    sin(radians(:lat)) * sin(radians(n.lat))
+                )) AS distance_km
+                FROM ngos n
+                WHERE n.status = 'APPROVED'
+                  AND n.profile_complete = true
+                  AND (:category IS NULL OR n.category_of_work = :category)
+                  AND (:search IS NULL OR LOWER(n.name) LIKE LOWER(CONCAT('%', :search, '%')))
+            ) nearby_ngos
+            WHERE nearby_ngos.distance_km <= :radius
+            ORDER BY nearby_ngos.distance_km ASC
             """, nativeQuery = true)
     List<Object[]> findNearby(
             @Param("lat") double lat,

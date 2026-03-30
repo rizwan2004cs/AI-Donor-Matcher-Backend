@@ -1,5 +1,6 @@
 package com.aidonormatcher.backend.controller;
 
+import com.aidonormatcher.backend.dto.NgoDiscoveryDTO;
 import com.aidonormatcher.backend.dto.NgoProfileRequest;
 import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.User;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -44,5 +46,14 @@ public class NgoController {
         ngoService.updatePhotoUrl(user.getEmail(), url);
         return ResponseEntity.ok(Map.of("url", url));
     }
-}
 
+    @GetMapping("/api/ngos")
+    public ResponseEntity<List<NgoDiscoveryDTO>> discoverNgos(
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double radius,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(ngoService.discoverNgos(lat, lng, radius, category, search));
+    }
+}
