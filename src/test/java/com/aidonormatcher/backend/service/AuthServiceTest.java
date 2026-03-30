@@ -48,16 +48,14 @@ class AuthServiceTest {
         // ─── register ────────────────────────────────────────────────────────────
 
         @Test
-        void register_donorSucceeds_savesUserAndStartsOtpFlow() {
+        void register_donorSucceeds_onlyAfterOtpVerification() {
                 RegisterRequest req = new RegisterRequest(
                                 "Alice", "alice@example.com", "password123", Role.DONOR, "London", "123456");
                 when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
                 when(passwordEncoder.encode("password123")).thenReturn("encoded");
                 when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-                when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token-abc");
-
-                LoginResponse loginResponse = authService.register(req, null);
+                authService.register(req, null);
 
                 ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
                 verify(userRepository, atLeastOnce()).save(captor.capture());
@@ -70,9 +68,6 @@ class AuthServiceTest {
                 verify(registrationOtpService).clearOtp("alice@example.com");
                 verify(emailService, never()).sendVerificationEmail(any(User.class), anyString());
                 verifyNoInteractions(ngoRepository);
-                assertThat(loginResponse.token()).isEqualTo("jwt-token-abc");
-                assertThat(loginResponse.user().email()).isEqualTo("alice@example.com");
-                assertThat(loginResponse.user().profileComplete()).isTrue();
         }
 
         @Test
@@ -82,16 +77,18 @@ class AuthServiceTest {
                 when(userRepository.existsByEmail("ngo@org.com")).thenReturn(false);
                 when(passwordEncoder.encode("secret")).thenReturn("enc");
                 when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+                when(userRepository.findByRole(Role.ADMIN)).thenReturn(java.util.List.of(
+                                User.builder().id(99L).email("admin@example.com").role(Role.ADMIN).build()));
 
-                when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token-xyz");
-
-                LoginResponse loginResponse = authService.register(req, null);
+                authService.register(req, null);
 
                 verify(ngoRepository).save(any(Ngo.class));
                 ArgumentCaptor<Ngo> ngoCaptor = ArgumentCaptor.forClass(Ngo.class);
                 verify(ngoRepository).save(ngoCaptor.capture());
                 assertThat(ngoCaptor.getValue().getStatus()).isEqualTo(NgoStatus.PENDING);
-                assertThat(loginResponse.token()).isEqualTo("jwt-token-xyz");
+                verify(emailService).sendNgoApplicationAlert(any(User.class), any(Ngo.class));
+                verify(registrationOtpService).verifyOtp("ngo@org.com", "123456");
+                verify(registrationOtpService).clearOtp("ngo@org.com");
         }
 
         @Test
@@ -118,30 +115,28 @@ class AuthServiceTest {
         // ─── verifyEmail ─────────────────────────────────────────────────────────
 
         @Test
-        void verifyEmail_validToken_setsEmailVerifiedAndClearsToken() {
-                User user = User.builder()
-                                .id(1L).email("test@test.com")
-                                .emailVerificationToken("abc-token")
-                                .emailVerified(false)
-                                .build();
-                when(userRepository.findByEmailVerificationToken("abc-token"))
-                                .thenReturn(Optional.of(user));
-
-                authService.verifyEmail("abc-token");
-
-                assertThat(user.isEmailVerified()).isTrue();
-                assertThat(user.getEmailVerificationToken()).isNull();
-                verify(userRepository).save(user);
+        void verifyEmail_throwsUnsupportedBecauseOnlyOtpIsAllowed() {
+                assertThatThrownBy(() -> authService.verifyEmail("abc-token"))
+                                .isInstanceOf(RuntimeException.class)
+                                .hasMessageContaining("Link-based verification is not supported");
         }
 
         @Test
-        void verifyEmail_invalidToken_throwsRuntimeException() {
-                when(userRepository.findByEmailVerificationToken("bad-token"))
-                                .thenReturn(Optional.empty());
+        void resendVerification_unverifiedUser_sendsOtpEmailAndSetsFields() {
+                User user = User.builder()
+                                .id(1L)
+                                .email("otp@example.com")
+                                .fullName("Otp User")
+                                .emailVerified(false)
+                                .build();
+                when(userRepository.findByEmail("otp@example.com")).thenReturn(Optional.of(user));
+                when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-                assertThatThrownBy(() -> authService.verifyEmail("bad-token"))
-                                .isInstanceOf(RuntimeException.class)
-                                .hasMessageContaining("Invalid verification token");
+                authService.resendVerification("otp@example.com");
+
+                assertThat(user.getEmailVerificationOtp()).isNotNull();
+                assertThat(user.getEmailVerificationOtpExpiresAt()).isAfter(LocalDateTime.now().minusSeconds(1));
+                verify(emailService).sendVerificationOtpEmail(eq(user), anyString());
         }
 
         // ─── login ───────────────────────────────────────────────────────────────
@@ -159,9 +154,9 @@ class AuthServiceTest {
                 LoginResponse resp = authService.login(new LoginRequest("alice@example.com", "password123"));
 
                 assertThat(resp.token()).isEqualTo("jwt-token-abc");
-                assertThat(resp.user().email()).isEqualTo("alice@example.com");
-                assertThat(resp.user().role()).isEqualTo("DONOR");
-                assertThat(resp.user().profileComplete()).isTrue();
+                assertThat(resp.email()).isEqualTo("alice@example.com");
+                assertThat(resp.role()).isEqualTo("DONOR");
+                assertThat(resp.userId()).isEqualTo(1L);
         }
 
         @Test
@@ -273,4 +268,5 @@ class AuthServiceTest {
 
                 assertThat(user.getEmailVerificationOtpAttempts()).isEqualTo(1);
         }
+
 }

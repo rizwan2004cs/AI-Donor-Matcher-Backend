@@ -1,6 +1,7 @@
 package com.aidonormatcher.backend.controller;
 
 import com.aidonormatcher.backend.dto.NgoProfileRequest;
+import com.aidonormatcher.backend.dto.UrlResponse;
 import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.User;
 import com.aidonormatcher.backend.enums.NeedCategory;
@@ -19,7 +20,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.IOException;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -90,10 +90,10 @@ class NgoControllerTest {
         when(cloudinaryService.uploadPhoto(file)).thenReturn("https://cdn.example.com/ngo-photo.jpg");
         doNothing().when(ngoService).updatePhotoUrl("ngo@example.com", "https://cdn.example.com/ngo-photo.jpg");
 
-        ResponseEntity<Map<String, String>> response = ngoController.uploadPhoto(ngoUser, file);
+        ResponseEntity<UrlResponse> response = ngoController.uploadPhoto(ngoUser, file);
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
-        assertThat(response.getBody()).containsEntry("url", "https://cdn.example.com/ngo-photo.jpg");
+        assertThat(response.getBody()).isEqualTo(new UrlResponse("https://cdn.example.com/ngo-photo.jpg"));
         verify(cloudinaryService).uploadPhoto(file);
         verify(ngoService).updatePhotoUrl("ngo@example.com", "https://cdn.example.com/ngo-photo.jpg");
     }

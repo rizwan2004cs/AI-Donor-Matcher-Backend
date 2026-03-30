@@ -6,6 +6,9 @@ import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.User;
 import com.aidonormatcher.backend.repository.NgoRepository;
 import com.aidonormatcher.backend.service.NeedService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,11 +26,14 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "Needs", description = "NGO need management endpoints.")
+@SecurityRequirement(name = "bearerAuth")
 public class NeedController {
 
     private final NeedService needService;
     private final NgoRepository ngoRepository;
 
+    @Operation(summary = "List needs created by the authenticated NGO")
     @GetMapping("/api/ngo/my/needs")
     public ResponseEntity<List<Need>> getMyNeeds(@AuthenticationPrincipal User user) {
         Ngo ngo = ngoRepository.findByUserId(user.getId())
@@ -35,6 +41,7 @@ public class NeedController {
         return ResponseEntity.ok(needService.getNeedsByNgo(ngo));
     }
 
+    @Operation(summary = "Create a new need")
     @PostMapping("/api/needs")
     public ResponseEntity<Need> createNeed(
             @AuthenticationPrincipal User user,
@@ -44,6 +51,7 @@ public class NeedController {
         return ResponseEntity.ok(needService.createNeed(request, ngo.getId()));
     }
 
+    @Operation(summary = "Update an existing need")
     @PutMapping("/api/needs/{id}")
     public ResponseEntity<Need> updateNeed(
             @AuthenticationPrincipal User user,
@@ -52,6 +60,7 @@ public class NeedController {
         return ResponseEntity.ok(needService.updateNeed(id, request, user.getId()));
     }
 
+    @Operation(summary = "Delete a need")
     @DeleteMapping("/api/needs/{id}")
     public ResponseEntity<Void> deleteNeed(
             @AuthenticationPrincipal User user,
@@ -60,6 +69,7 @@ public class NeedController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Mark a need as fulfilled")
     @PatchMapping("/api/needs/{id}/fulfill")
     public ResponseEntity<Void> fulfillNeed(
             @AuthenticationPrincipal User user,

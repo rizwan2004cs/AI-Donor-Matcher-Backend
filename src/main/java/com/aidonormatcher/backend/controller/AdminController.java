@@ -1,10 +1,15 @@
 package com.aidonormatcher.backend.controller;
 
+import com.aidonormatcher.backend.dto.MessageResponse;
 import com.aidonormatcher.backend.dto.NeedRequest;
+import com.aidonormatcher.backend.dto.ReasonRequest;
 import com.aidonormatcher.backend.entity.Need;
 import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.Report;
 import com.aidonormatcher.backend.service.AdminService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,45 +28,54 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@Tag(name = "Admin", description = "Admin moderation, reporting, and dashboard endpoints.")
+@SecurityRequirement(name = "bearerAuth")
 public class AdminController {
 
     private final AdminService adminService;
 
+    @Operation(summary = "List NGOs awaiting approval")
     @GetMapping("/ngos/pending")
     public ResponseEntity<List<Ngo>> getPendingNgos() {
         return ResponseEntity.ok(adminService.getPendingNgos());
     }
 
+    @Operation(summary = "List all NGO profiles")
     @GetMapping("/ngos")
     public ResponseEntity<List<Ngo>> getAllNgos() {
         return ResponseEntity.ok(adminService.getAllNgos());
     }
 
+    @Operation(summary = "Approve an NGO")
     @PostMapping("/ngos/{id}/approve")
-    public ResponseEntity<String> approveNgo(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> approveNgo(@PathVariable Long id) {
         adminService.approveNgo(id);
-        return ResponseEntity.ok("NGO approved.");
+        return ResponseEntity.ok(new MessageResponse("NGO approved."));
     }
 
+    @Operation(summary = "Reject an NGO with a reason")
     @PostMapping("/ngos/{id}/reject")
-    public ResponseEntity<String> rejectNgo(
+    public ResponseEntity<MessageResponse> rejectNgo(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
-        adminService.rejectNgo(id, body.get("reason"));
-        return ResponseEntity.ok("NGO rejected.");
+            @Valid @RequestBody ReasonRequest request) {
+        adminService.rejectNgo(id, request.reason());
+        return ResponseEntity.ok(new MessageResponse("NGO rejected."));
     }
 
+    @Operation(summary = "Suspend an NGO and expire active needs")
     @PostMapping("/ngos/{id}/suspend")
-    public ResponseEntity<String> suspendNgo(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> suspendNgo(@PathVariable Long id) {
         adminService.suspendNgo(id);
-        return ResponseEntity.ok("NGO suspended.");
+        return ResponseEntity.ok(new MessageResponse("NGO suspended."));
     }
 
+    @Operation(summary = "List NGO reports submitted by donors")
     @GetMapping("/reports")
     public ResponseEntity<List<Report>> getReports() {
         return ResponseEntity.ok(adminService.getReports());
     }
 
+    @Operation(summary = "Edit a need as an administrator")
     @PutMapping("/needs/{id}")
     public ResponseEntity<Need> editNeed(
             @PathVariable Long id,
@@ -69,12 +83,14 @@ public class AdminController {
         return ResponseEntity.ok(adminService.editNeed(id, request));
     }
 
+    @Operation(summary = "Delete a need as an administrator")
     @DeleteMapping("/needs/{id}")
     public ResponseEntity<Void> removeNeed(@PathVariable Long id) {
         adminService.removeNeed(id);
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Get admin dashboard statistics")
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         return ResponseEntity.ok(adminService.getStats());

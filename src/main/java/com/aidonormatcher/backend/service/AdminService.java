@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -36,12 +37,6 @@ public class AdminService {
     public void approveNgo(Long ngoId) {
         Ngo ngo = ngoRepository.findById(ngoId)
                 .orElseThrow(() -> new RuntimeException("NGO not found."));
-        if (!ngo.isProfileComplete()) {
-            throw new RuntimeException("NGO profile must be complete before approval.");
-        }
-        if (!ngo.getUser().isEmailVerified()) {
-            throw new RuntimeException("NGO email must be verified before approval.");
-        }
         ngo.setStatus(NgoStatus.APPROVED);
         ngo.setVerifiedAt(LocalDateTime.now());
         ngoRepository.save(ngo);
@@ -84,6 +79,8 @@ public class AdminService {
             need.setStatus(NeedStatus.EXPIRED);
             needRepository.save(need);
         }
+
+        emailService.sendNgoSuspendedEmail(ngo);
     }
 
     @Transactional
@@ -119,6 +116,11 @@ public class AdminService {
     }
 
     public Map<String, Object> getStats() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfToday = today.atStartOfDay();
+        LocalDateTime startOfTomorrow = today.plusDays(1).atStartOfDay();
+        LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalUsers", userRepository.count());
         stats.put("totalNgos", ngoRepository.count());
@@ -126,6 +128,10 @@ public class AdminService {
         stats.put("totalNeeds", needRepository.count());
         stats.put("totalPledges", pledgeRepository.count());
         stats.put("totalReports", reportRepository.count());
+        stats.put("activeNeeds", needRepository.countByStatusIn(
+                List.of(NeedStatus.OPEN, NeedStatus.PARTIALLY_PLEDGED, NeedStatus.FULLY_PLEDGED)));
+        stats.put("pledgesToday", pledgeRepository.countByCreatedAtBetween(startOfToday, startOfTomorrow));
+        stats.put("fulfillmentsThisMonth", needRepository.countByFulfilledAtBetween(startOfMonth, startOfTomorrow));
         return stats;
     }
 }

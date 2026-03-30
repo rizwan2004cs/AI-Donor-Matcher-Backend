@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -33,4 +34,8 @@ public interface NeedRepository extends JpaRepository<Need, Long> {
     List<Need> findByExpiryDateAndStatusIn(LocalDate expiryDate, List<NeedStatus> statuses);
 
     List<Need> findByExpiryDateBeforeAndStatusIn(LocalDate date, List<NeedStatus> statuses);
+
+    long countByStatusIn(List<NeedStatus> statuses);
+
+    long countByFulfilledAtBetween(LocalDateTime start, LocalDateTime end);
 }

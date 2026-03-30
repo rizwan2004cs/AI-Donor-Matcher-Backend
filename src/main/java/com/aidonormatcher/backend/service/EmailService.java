@@ -39,7 +39,7 @@ public class EmailService {
         }
 
         public void sendVerificationEmail(User user, String token) {
-                String link = baseUrl + "/verify-email?token=" + token;
+                String link = baseUrl + "/api/auth/verify?token=" + token;
                 send(user.getEmail(), "Verify your AI Donor Matcher account",
                                 "Hi " + user.getFullName() + ",\n\nClick to verify:\n" + link);
         }
@@ -67,6 +67,11 @@ public class EmailService {
         public void sendNgoRejectedEmail(Ngo ngo, String reason) {
                 send(getNgoRecipientEmail(ngo), "Your NGO application was not approved",
                                 "Reason: " + reason + "\n\nYou may reapply with corrected documents.");
+        }
+
+        public void sendNgoSuspendedEmail(Ngo ngo) {
+                send(getNgoRecipientEmail(ngo), "Your NGO account has been suspended",
+                                "Your NGO account has been suspended. Please contact the platform administrator for details.");
         }
 
         public void sendPledgeConfirmationEmail(User donor, Pledge pledge, Ngo ngo) {

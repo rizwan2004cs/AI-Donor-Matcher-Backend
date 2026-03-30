@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -109,6 +110,7 @@ class AdminServiceTest {
         assertThat(ngo.getStatus()).isEqualTo(NgoStatus.SUSPENDED);
         assertThat(pledge.getStatus()).isEqualTo(PledgeStatus.CANCELLED);
         assertThat(need.getStatus()).isEqualTo(NeedStatus.EXPIRED);
+        verify(emailService).sendNgoSuspendedEmail(ngo);
     }
 
     // ─── removeNeed ──────────────────────────────────────────────────────────
@@ -155,11 +157,16 @@ class AdminServiceTest {
         when(needRepository.count()).thenReturn(20L);
         when(pledgeRepository.count()).thenReturn(30L);
         when(reportRepository.count()).thenReturn(2L);
+        when(needRepository.countByStatusIn(anyList())).thenReturn(12L);
+        when(pledgeRepository.countByCreatedAtBetween(any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(4L);
+        when(needRepository.countByFulfilledAtBetween(any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(6L);
 
         Map<String, Object> stats = adminService.getStats();
 
         assertThat(stats).containsKeys("totalUsers", "totalNgos", "pendingNgos",
-                "totalNeeds", "totalPledges", "totalReports");
+                "totalNeeds", "totalPledges", "totalReports",
+                "activeNeeds", "pledgesToday", "fulfillmentsThisMonth");
         assertThat(stats.get("totalUsers")).isEqualTo(10L);
+        assertThat(stats.get("activeNeeds")).isEqualTo(12L);
     }
 }

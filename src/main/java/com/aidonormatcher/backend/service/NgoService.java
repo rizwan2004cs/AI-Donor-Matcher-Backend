@@ -128,11 +128,7 @@ public class NgoService {
                 && ngo.getContactEmail() != null && !ngo.getContactEmail().isBlank()
                 && ngo.getContactPhone() != null && !ngo.getContactPhone().isBlank()
                 && ngo.getDescription() != null && ngo.getDescription().length() >= 50
-                && ngo.getCategoryOfWork() != null
-                && ngo.getLat() != null
-                && ngo.getLng() != null
-                && ngo.getPhotoUrl() != null && !ngo.getPhotoUrl().isBlank()
-                && ngo.getDocumentUrl() != null && !ngo.getDocumentUrl().isBlank();
+                && ngo.getCategoryOfWork() != null;
     }
 
     @SuppressWarnings("unchecked")

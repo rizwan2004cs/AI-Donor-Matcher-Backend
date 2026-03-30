@@ -51,26 +51,13 @@ public class AuthService {
 
     private LoginResponse buildLoginResponse(User user) {
         String jwt = jwtService.generateToken(user);
-
-        Boolean profileComplete;
-        if (user.getRole() == Role.NGO) {
-            Ngo ngo = ngoRepository.findByUserId(user.getId())
-                    .orElse(null);
-            profileComplete = ngo != null && ngo.isProfileComplete();
-        } else {
-            // Donors are always treated as profile-complete for navigation.
-            profileComplete = Boolean.TRUE;
-        }
-
-        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
+        return new LoginResponse(
+                jwt,
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole().name(),
-                user.isEmailVerified(),
-                profileComplete);
-
-        return new LoginResponse(jwt, userInfo);
+                user.isEmailVerified());
     }
 
     public void sendRegistrationOtp(String email) {
@@ -82,11 +69,10 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse register(RegisterRequest req, MultipartFile document) {
+    public void register(RegisterRequest req, MultipartFile document) {
         if (userRepository.existsByEmail(req.email())) {
             throw new RuntimeException("Email already registered.");
         }
-
         registrationOtpService.verifyOtp(req.email(), req.otp());
 
         User user = User.builder()
@@ -118,23 +104,22 @@ public class AuthService {
                     .profileComplete(false)
                     .trustScore(0)
                     .trustTier(TrustTier.NEW)
-                    .documentUrl(docUrl)
+                .documentUrl(docUrl)
                     .createdAt(LocalDateTime.now())
                     .build();
             ngoRepository.save(ngo);
+
+            for (User admin : userRepository.findByRole(Role.ADMIN)) {
+                emailService.sendNgoApplicationAlert(admin, ngo);
+            }
         }
 
         registrationOtpService.clearOtp(req.email());
-        return buildLoginResponse(user);
     }
 
     @Transactional
     public void verifyEmail(String token) {
-        User user = userRepository.findByEmailVerificationToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid verification token."));
-        user.setEmailVerified(true);
-        user.setEmailVerificationToken(null);
-        userRepository.save(user);
+        throw new RuntimeException("Link-based verification is not supported. Use OTP verification.");
     }
 
     public LoginResponse login(LoginRequest req) {
@@ -156,7 +141,6 @@ public class AuthService {
         if (user.isEmailVerified()) {
             throw new RuntimeException("Email is already verified.");
         }
-
         startOtpForUser(user);
     }
 

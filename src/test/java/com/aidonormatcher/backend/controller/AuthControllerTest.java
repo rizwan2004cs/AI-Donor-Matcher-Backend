@@ -60,33 +60,20 @@ class AuthControllerTest {
                 "Colombo",
                 "123456");
 
-        LoginResponse response = new LoginResponse(
-                "jwt-token",
-                new LoginResponse.UserInfo(1L, "Alice Donor", "alice@example.com", "DONOR", true, true));
-
-        when(authService.register(any(RegisterRequest.class), eq(null))).thenReturn(response);
+        doNothing().when(authService).register(any(RegisterRequest.class), eq(null));
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.message").value("Registration successful. Please check your email to verify your account."))
-                .andExpect(jsonPath("$.token").value("jwt-token"))
-                .andExpect(jsonPath("$.user.userId").value(1))
-                .andExpect(jsonPath("$.user.email").value("alice@example.com"))
-                .andExpect(jsonPath("$.user.role").value("DONOR"))
-                .andExpect(jsonPath("$.user.profileComplete").value(true));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Registration successful. You can now log in."));
 
         verify(authService).register(any(RegisterRequest.class), eq(null));
     }
 
     @Test
     void registerMultipart_validRequest_returnsCreatedResponse() throws Exception {
-        LoginResponse response = new LoginResponse(
-                "ngo-jwt",
-                new LoginResponse.UserInfo(2L, "Helping Hands", "ngo@example.com", "NGO", true, false));
-
-        when(authService.register(any(RegisterRequest.class), any())).thenReturn(response);
+        doNothing().when(authService).register(any(RegisterRequest.class), any());
 
         mockMvc.perform(multipart("/api/auth/register")
                         .file("documents", "sample".getBytes())
@@ -96,10 +83,8 @@ class AuthControllerTest {
                         .param("role", "NGO")
                         .param("otp", "654321")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value("ngo-jwt"))
-                .andExpect(jsonPath("$.user.role").value("NGO"))
-                .andExpect(jsonPath("$.user.profileComplete").value(false));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Registration successful. You can now log in."));
     }
 
     @Test
@@ -115,26 +100,31 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.error").value("Validation failed."))
+                .andExpect(jsonPath("$.fieldErrors.fullName").exists())
+                .andExpect(jsonPath("$.fieldErrors.email").exists())
+                .andExpect(jsonPath("$.fieldErrors.password").exists())
+                .andExpect(jsonPath("$.fieldErrors.otp").exists());
     }
 
     @Test
     void verifyEmail_validToken_returnsSuccessMessage() throws Exception {
-        doNothing().when(authService).verifyEmail("valid-token");
+        doThrow(new RuntimeException("Link-based verification is not supported. Use OTP verification."))
+                .when(authService).verifyEmail("valid-token");
 
         mockMvc.perform(get("/api/auth/verify").param("token", "valid-token"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Email verified successfully. You can now log in."));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Link-based verification is not supported. Use OTP verification."));
     }
 
     @Test
     void verifyEmail_invalidToken_returnsBadRequest() throws Exception {
-        doThrow(new RuntimeException("Invalid verification token."))
+        doThrow(new RuntimeException("Link-based verification is not supported. Use OTP verification."))
                 .when(authService).verifyEmail("bad-token");
 
         mockMvc.perform(get("/api/auth/verify").param("token", "bad-token"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid verification token."));
+                .andExpect(jsonPath("$.error").value("Link-based verification is not supported. Use OTP verification."));
     }
 
     @Test
@@ -142,7 +132,11 @@ class AuthControllerTest {
         LoginRequest request = new LoginRequest("alice@example.com", "password123");
         LoginResponse response = new LoginResponse(
                 "jwt-token",
-                new LoginResponse.UserInfo(1L, "Alice Donor", "alice@example.com", "DONOR", true, true));
+                1L,
+                "Alice Donor",
+                "alice@example.com",
+                "DONOR",
+                true);
 
         when(authService.login(any(LoginRequest.class))).thenReturn(response);
 
@@ -151,8 +145,8 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt-token"))
-                .andExpect(jsonPath("$.user.email").value("alice@example.com"))
-                .andExpect(jsonPath("$.user.role").value("DONOR"));
+                .andExpect(jsonPath("$.email").value("alice@example.com"))
+                .andExpect(jsonPath("$.role").value("DONOR"));
     }
 
     @Test
@@ -175,7 +169,8 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Email is required."));
+                .andExpect(jsonPath("$.error").value("Validation failed."))
+                .andExpect(jsonPath("$.fieldErrors.email").exists());
     }
 
     @Test
@@ -186,6 +181,17 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("email", "alice@example.com"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Verification email resent. Please check your inbox."));
+                .andExpect(jsonPath("$.message").value("Verification code sent to your email."));
+    }
+
+    @Test
+    void verifyOtp_missingFields_returnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/auth/verify-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation failed."))
+                .andExpect(jsonPath("$.fieldErrors.email").exists())
+                .andExpect(jsonPath("$.fieldErrors.otp").exists());
     }
 }
