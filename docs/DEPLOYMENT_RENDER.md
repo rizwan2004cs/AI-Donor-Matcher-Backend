@@ -6,6 +6,11 @@
 - `Dockerfile` for Java 21 / Spring Boot packaging
 - `docker-entrypoint.sh` that converts Render's `postgresql://...` connection string into a JDBC URL automatically
 
+The Blueprint uses:
+
+- a `starter` web service, because Render's free web services do not allow outbound SMTP on port `587`
+- a free Postgres database for low-cost setup
+
 ## Backend Environment Variables
 
 Render will provision these through the blueprint:
@@ -60,3 +65,5 @@ For the Vite frontend, set:
 - The backend listens on `PORT`, which Render injects automatically.
 - Database schema updates still rely on `spring.jpa.hibernate.ddl-auto=update`.
 - Gmail SMTP may hit quota limits; approval/rejection emails are already best-effort with retry.
+- If you keep Gmail SMTP, the web service should not be downgraded to Render's free plan, because free web services block outbound SMTP on port `587`.
+- Free Render Postgres expires after 30 days unless upgraded.
