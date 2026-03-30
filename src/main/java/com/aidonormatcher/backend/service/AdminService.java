@@ -205,9 +205,9 @@ public class AdminService {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalUsers", userRepository.count());
         stats.put("totalNgos", ngoRepository.count());
-        stats.put("pendingNgos", ngoRepository.findByStatus(NgoStatus.PENDING).size());
-        stats.put("approvedNgos", ngoRepository.findByStatus(NgoStatus.APPROVED).size());
-        stats.put("suspendedNgos", ngoRepository.findByStatus(NgoStatus.SUSPENDED).size());
+        stats.put("pendingNgos", ngoRepository.countByStatus(NgoStatus.PENDING));
+        stats.put("approvedNgos", ngoRepository.countByStatus(NgoStatus.APPROVED));
+        stats.put("suspendedNgos", ngoRepository.countByStatus(NgoStatus.SUSPENDED));
         stats.put("totalNeeds", needRepository.count());
         stats.put("totalPledges", pledgeRepository.count());
         stats.put("totalReports", reportRepository.count());

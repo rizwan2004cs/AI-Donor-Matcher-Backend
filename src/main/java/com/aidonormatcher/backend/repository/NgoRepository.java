@@ -24,6 +24,8 @@ public interface NgoRepository extends JpaRepository<Ngo, Long> {
 
     Page<Ngo> findByStatus(NgoStatus status, Pageable pageable);
 
+    long countByStatus(NgoStatus status);
+
     @Query(value = """
             SELECT *
             FROM (

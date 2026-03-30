@@ -155,7 +155,9 @@ class AdminServiceTest {
     void getStats_returnsMapWithAllKeys() {
         when(userRepository.count()).thenReturn(10L);
         when(ngoRepository.count()).thenReturn(5L);
-        when(ngoRepository.findByStatus(NgoStatus.PENDING)).thenReturn(List.of(ngo));
+        when(ngoRepository.countByStatus(NgoStatus.PENDING)).thenReturn(1L);
+        when(ngoRepository.countByStatus(NgoStatus.APPROVED)).thenReturn(3L);
+        when(ngoRepository.countByStatus(NgoStatus.SUSPENDED)).thenReturn(1L);
         when(needRepository.count()).thenReturn(20L);
         when(pledgeRepository.count()).thenReturn(30L);
         when(reportRepository.count()).thenReturn(2L);
