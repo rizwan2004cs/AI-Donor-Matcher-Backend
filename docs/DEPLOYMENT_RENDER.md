@@ -2,35 +2,34 @@
 
 ## What This Repo Includes
 
-- `render.yaml` blueprint for a Render web service plus PostgreSQL
+- `render.yaml` blueprint for a Render web service
 - `Dockerfile` for Java 21 / Spring Boot packaging
-- `docker-entrypoint.sh` that converts Render's `postgresql://...` connection string into a JDBC URL automatically
+- `docker-entrypoint.sh` that converts a `postgresql://...` Neon connection string into a JDBC URL automatically
 
 The Blueprint uses:
 
-- a `starter` web service, because Render's free web services do not allow outbound SMTP on port `587`
-- a free Postgres database for low-cost setup
+- a free Render web service
+- Neon for PostgreSQL
+- Resend over HTTPS instead of SMTP, so the free Render plan can still send OTP and notification emails
 
 ## Backend Environment Variables
 
-Render will provision these through the blueprint:
+Set these manually in Render before going live:
 
 - `DB_URL`
 - `DB_USERNAME`
 - `DB_PASSWORD`
 - `JWT_SECRET`
 - `JWT_EXPIRATION_MS`
-- `GEOCODING_PROVIDER`
-- `GEOCODING_NOMINATIM_USER_AGENT`
-
-Set these manually in Render before going live:
-
 - `APP_BASE_URL`
-- `MAIL_USERNAME`
-- `MAIL_PASSWORD`
+- `EMAIL_PROVIDER`
+- `RESEND_API_KEY`
+- `MAIL_FROM`
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
+- `GEOCODING_PROVIDER`
+- `GEOCODING_NOMINATIM_USER_AGENT`
 
 ## CORS
 
@@ -64,6 +63,5 @@ For the Vite frontend, set:
 
 - The backend listens on `PORT`, which Render injects automatically.
 - Database schema updates still rely on `spring.jpa.hibernate.ddl-auto=update`.
-- Gmail SMTP may hit quota limits; approval/rejection emails are already best-effort with retry.
-- If you keep Gmail SMTP, the web service should not be downgraded to Render's free plan, because free web services block outbound SMTP on port `587`.
-- Free Render Postgres expires after 30 days unless upgraded.
+- Email delivery now uses Resend over HTTPS, so the free Render plan remains viable.
+- The email retry queue is still in-memory; if the service restarts before retrying, queued emails are lost.

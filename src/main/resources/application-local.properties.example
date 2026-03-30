@@ -28,10 +28,11 @@ jwt.secret=your-256-bit-base64-encoded-secret-here
 jwt.expiration-ms=86400000
 
 # ===========================
-# Email (Gmail SMTP)
+# Email (Resend HTTPS API)
 # ===========================
-spring.mail.username=your-gmail@gmail.com
-spring.mail.password=your-gmail-app-password
+email.provider=resend
+email.resend.api-key=re_your_resend_api_key
+mail.from=AI Donor Matcher <noreply@yourdomain.com>
 
 # ===========================
 # Cloudinary

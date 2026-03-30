@@ -2,6 +2,7 @@ package com.aidonormatcher.backend.config;
 
 import com.aidonormatcher.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -13,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -52,6 +54,15 @@ public class ApplicationConfig {
         return builder
                 .setConnectTimeout(Duration.ofSeconds(5))
                 .setReadTimeout(Duration.ofSeconds(5))
+                .build();
+    }
+
+    @Bean
+    public RestClient resendRestClient(
+            RestClient.Builder builder,
+            @Value("${email.resend.base-url}") String resendBaseUrl) {
+        return builder
+                .baseUrl(resendBaseUrl)
                 .build();
     }
 }
