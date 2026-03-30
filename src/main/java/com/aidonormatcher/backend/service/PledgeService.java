@@ -138,10 +138,38 @@ public class PledgeService {
     public List<IncomingPledgeResponse> getIncomingPledges(Long ngoUserId) {
         Ngo ngo = ngoRepository.findByUserId(ngoUserId)
                 .orElseThrow(() -> new RuntimeException("NGO profile not found."));
-        return pledgeRepository.findByNeedNgoIdAndStatusOrderByCreatedAtDesc(ngo.getId(), PledgeStatus.ACTIVE)
+        return pledgeRepository.findByNeedNgoIdAndStatusInOrderByCreatedAtDesc(
+                        ngo.getId(), List.of(PledgeStatus.ACTIVE, PledgeStatus.FULFILLED))
                 .stream()
                 .map(this::toIncomingPledgeResponse)
                 .toList();
+    }
+
+    @Transactional
+    public IncomingPledgeResponse receivePledge(Long pledgeId, Long ngoUserId) {
+        Pledge pledge = pledgeRepository.findById(pledgeId)
+                .orElseThrow(() -> new RuntimeException("Pledge not found."));
+
+        Need need = pledge.getNeed();
+        Ngo ngo = need.getNgo();
+        if (!ngo.getUser().getId().equals(ngoUserId)) {
+            throw new RuntimeException("Unauthorized.");
+        }
+
+        if (pledge.getStatus() != PledgeStatus.ACTIVE) {
+            throw new RuntimeException("Only active pledges can be marked as received.");
+        }
+
+        pledge.setStatus(PledgeStatus.FULFILLED);
+        pledgeRepository.save(pledge);
+
+        need.setQuantityReceived(need.getQuantityReceived() + pledge.getQuantity());
+        needService.recalculateStatus(need);
+
+        ngo.setLastActivityAt(LocalDateTime.now());
+        ngoRepository.save(ngo);
+
+        return toIncomingPledgeResponse(pledge);
     }
 
     private PledgeDetailResponse toPledgeDetailResponse(Pledge pledge) {
@@ -173,9 +201,15 @@ public class PledgeService {
                 pledge.getDonor().getFullName(),
                 pledge.getDonor().getEmail(),
                 pledge.getNeed().getItemName(),
+                pledge.getNeed().getCategory() != null ? pledge.getNeed().getCategory().name() : null,
                 pledge.getQuantity(),
                 pledge.getStatus() != null ? pledge.getStatus().name() : null,
-                pledge.getCreatedAt()
+                pledge.getCreatedAt(),
+                pledge.getExpiresAt(),
+                pledge.getNeed().getQuantityRequired(),
+                pledge.getNeed().getQuantityPledged(),
+                pledge.getNeed().getQuantityReceived(),
+                pledge.getNeed().getQuantityRemainingToReceive()
         );
     }
 }

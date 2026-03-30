@@ -2,6 +2,7 @@ package com.aidonormatcher.backend.controller;
 
 import com.aidonormatcher.backend.dto.IncomingPledgeResponse;
 import com.aidonormatcher.backend.dto.MessageResponse;
+import com.aidonormatcher.backend.dto.NgoDetailResponse;
 import com.aidonormatcher.backend.dto.NgoDiscoveryDTO;
 import com.aidonormatcher.backend.dto.NgoProfileRequest;
 import com.aidonormatcher.backend.dto.ReportRequest;
@@ -21,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -77,6 +79,15 @@ public class NgoController {
         return ResponseEntity.ok(pledgeService.getIncomingPledges(user.getId()));
     }
 
+    @Operation(summary = "Mark an incoming pledge as received by the authenticated NGO")
+    @SecurityRequirement(name = "bearerAuth")
+    @PatchMapping("/api/ngo/my/pledges/{pledgeId}/receive")
+    public ResponseEntity<IncomingPledgeResponse> receivePledge(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long pledgeId) {
+        return ResponseEntity.ok(pledgeService.receivePledge(pledgeId, user.getId()));
+    }
+
     @Operation(summary = "Discover approved NGOs")
     @GetMapping("/api/ngos")
     public ResponseEntity<List<NgoDiscoveryDTO>> discoverNgos(
@@ -90,7 +101,7 @@ public class NgoController {
 
     @Operation(summary = "Get a single NGO by id")
     @GetMapping("/api/ngos/{id}")
-    public ResponseEntity<Ngo> getNgoById(@PathVariable Long id) {
+    public ResponseEntity<NgoDetailResponse> getNgoById(@PathVariable Long id) {
         return ResponseEntity.ok(ngoService.getNgoById(id));
     }
 

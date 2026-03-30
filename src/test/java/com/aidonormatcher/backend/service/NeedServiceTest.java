@@ -73,6 +73,7 @@ class NeedServiceTest {
         assertThat(created.getItemName()).isEqualTo("Blankets");
         assertThat(created.getStatus()).isEqualTo(NeedStatus.OPEN);
         assertThat(created.getQuantityPledged()).isEqualTo(0);
+        assertThat(created.getQuantityReceived()).isEqualTo(0);
         verify(needRepository).save(any(Need.class));
     }
 
@@ -187,12 +188,25 @@ class NeedServiceTest {
         assertThat(need.getStatus()).isEqualTo(NeedStatus.FULLY_PLEDGED);
     }
 
+    @Test
+    void recalculateStatus_receivedTotalReached_setsFulfilled() {
+        need.setQuantityRequired(10);
+        need.setQuantityPledged(10);
+        need.setQuantityReceived(10);
+
+        needService.recalculateStatus(need);
+
+        assertThat(need.getStatus()).isEqualTo(NeedStatus.FULFILLED);
+        assertThat(need.getFulfilledAt()).isNotNull();
+    }
+
     // ─── fulfillNeed ────────────────────────────────────────────────────────
 
     @Test
     void fulfillNeed_success_setsFulfilledStatus() {
         when(needRepository.findById(100L)).thenReturn(Optional.of(need));
         when(needRepository.save(any(Need.class))).thenAnswer(inv -> inv.getArgument(0));
+        need.setQuantityReceived(need.getQuantityRequired());
 
         needService.fulfillNeed(100L, 10L);
 
@@ -207,6 +221,16 @@ class NeedServiceTest {
         assertThatThrownBy(() -> needService.fulfillNeed(100L, 999L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Unauthorized");
+    }
+
+    @Test
+    void fulfillNeed_beforeAllPledgesReceived_throwsRuntimeException() {
+        when(needRepository.findById(100L)).thenReturn(Optional.of(need));
+        need.setQuantityReceived(4);
+
+        assertThatThrownBy(() -> needService.fulfillNeed(100L, 10L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Use pledge receipt updates");
     }
 
     // ─── getNeedsByNgo ───────────────────────────────────────────────────────

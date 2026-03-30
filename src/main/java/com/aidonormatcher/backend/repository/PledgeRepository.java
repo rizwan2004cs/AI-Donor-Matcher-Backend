@@ -27,5 +27,7 @@ public interface PledgeRepository extends JpaRepository<Pledge, Long> {
 
     List<Pledge> findByNeedNgoIdAndStatusOrderByCreatedAtDesc(Long ngoId, PledgeStatus status);
 
+    List<Pledge> findByNeedNgoIdAndStatusInOrderByCreatedAtDesc(Long ngoId, List<PledgeStatus> statuses);
+
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 }

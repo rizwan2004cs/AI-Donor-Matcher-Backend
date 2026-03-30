@@ -1,11 +1,18 @@
 package com.aidonormatcher.backend.service;
 
+import com.aidonormatcher.backend.dto.NeedDetailResponse;
+import com.aidonormatcher.backend.dto.NgoDetailResponse;
+import com.aidonormatcher.backend.dto.NgoDiscoveryDTO;
 import com.aidonormatcher.backend.dto.NgoProfileRequest;
 import com.aidonormatcher.backend.entity.Ngo;
+import com.aidonormatcher.backend.entity.Need;
 import com.aidonormatcher.backend.entity.User;
 import com.aidonormatcher.backend.service.GeocodingService.GeocodedPoint;
+import com.aidonormatcher.backend.enums.NeedCategory;
+import com.aidonormatcher.backend.enums.NeedStatus;
 import com.aidonormatcher.backend.enums.NgoStatus;
 import com.aidonormatcher.backend.enums.Role;
+import com.aidonormatcher.backend.enums.UrgencyLevel;
 import com.aidonormatcher.backend.repository.NeedRepository;
 import com.aidonormatcher.backend.repository.NgoRepository;
 import com.aidonormatcher.backend.repository.UserRepository;
@@ -17,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,6 +39,7 @@ class NgoServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private TrustScoreService trustScoreService;
     @Mock private GeocodingService geocodingService;
+    @Mock private NeedService needService;
 
     @InjectMocks
     private NgoService ngoService;
@@ -42,6 +51,7 @@ class NgoServiceTest {
     void setUp() {
         user = User.builder().id(1L).email("ngo@org.com").role(Role.NGO).build();
         ngo = Ngo.builder().id(1L).user(user).name("Test NGO")
+                .address("123 Hope Street, Nellore")
                 .status(NgoStatus.APPROVED).build();
     }
 
@@ -128,12 +138,31 @@ class NgoServiceTest {
     // ─── getNgoById ──────────────────────────────────────────────────────────
 
     @Test
-    void getNgoById_returnsNgo() {
+    void getNgoById_returnsNgoDetailWithActiveNeeds() {
+        Need need = Need.builder()
+                .id(10L)
+                .ngo(ngo)
+                .itemName("Rice")
+                .quantityRequired(10)
+                .quantityPledged(2)
+                .category(NeedCategory.FOOD)
+                .urgency(UrgencyLevel.NORMAL)
+                .status(NeedStatus.OPEN)
+                .build();
+        NeedDetailResponse detail = new NeedDetailResponse(
+                10L, 1L, "Test NGO", "123 Hope Street, Nellore", null, 0, null,
+                "FOOD", "Rice", "Rice packs", 10, 2, 8,
+                "NORMAL", null, "OPEN", null);
+
         when(ngoRepository.findById(1L)).thenReturn(Optional.of(ngo));
+        when(needRepository.findByNgoAndStatusIn(eq(ngo), anyList())).thenReturn(List.of(need));
+        when(needService.toNeedDetailResponse(need)).thenReturn(detail);
 
-        Ngo result = ngoService.getNgoById(1L);
+        NgoDetailResponse result = ngoService.getNgoById(1L);
 
-        assertThat(result).isEqualTo(ngo);
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.address()).isEqualTo("123 Hope Street, Nellore");
+        assertThat(result.activeNeeds()).containsExactly(detail);
     }
 
     @Test
@@ -143,5 +172,36 @@ class NgoServiceTest {
         assertThatThrownBy(() -> ngoService.getNgoById(99L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("NGO not found");
+    }
+
+    @Test
+    void discoverNgos_withCoordinates_mapsNearbyRowsUsingNgoIds() {
+        ngo.setLat(14.4493717);
+        ngo.setLng(79.9873763);
+        ngo.setTrustScore(56);
+        Need need = Need.builder()
+                .id(10L)
+                .ngo(ngo)
+                .itemName("Rice")
+                .quantityRequired(10)
+                .quantityPledged(2)
+                .category(NeedCategory.FOOD)
+                .urgency(UrgencyLevel.NORMAL)
+                .status(NeedStatus.OPEN)
+                .build();
+
+        when(ngoRepository.findNearby(14.44, 79.98, 50.0, null, null))
+                .thenReturn(List.<Object[]>of(new Object[]{1L, 4.2d}));
+        when(ngoRepository.findById(1L)).thenReturn(Optional.of(ngo));
+        when(needRepository.findTopByNgoAndStatusInOrderByUrgencyDescCreatedAtAsc(
+                eq(ngo), anyList())).thenReturn(need);
+
+        List<NgoDiscoveryDTO> results = ngoService.discoverNgos(14.44, 79.98, 50.0, null, null);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.getFirst().id()).isEqualTo(1L);
+        assertThat(results.getFirst().address()).isEqualTo("123 Hope Street, Nellore");
+        assertThat(results.getFirst().distanceKm()).isEqualTo(4.2d);
+        assertThat(results.getFirst().name()).isEqualTo("Test NGO");
     }
 }

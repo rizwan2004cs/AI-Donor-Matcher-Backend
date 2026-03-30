@@ -8,6 +8,8 @@ public record NgoDiscoveryDTO(
         Long id,
         @Schema(description = "NGO display name.", example = "Helping Hands")
         String name,
+        @Schema(description = "Public NGO address.", example = "Nellore, Andhra Pradesh, India")
+        String address,
         @Schema(description = "Distance from the user's supplied coordinates in kilometers.", example = "4.2")
         double distanceKm,
         @Schema(description = "Calculated trust score.", example = "82")

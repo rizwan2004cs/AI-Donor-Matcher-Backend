@@ -1,5 +1,7 @@
 package com.aidonormatcher.backend.controller;
 
+import com.aidonormatcher.backend.dto.IncomingPledgeResponse;
+import com.aidonormatcher.backend.dto.NgoDetailResponse;
 import com.aidonormatcher.backend.dto.NgoProfileRequest;
 import com.aidonormatcher.backend.dto.UrlResponse;
 import com.aidonormatcher.backend.entity.Ngo;
@@ -10,6 +12,7 @@ import com.aidonormatcher.backend.enums.Role;
 import com.aidonormatcher.backend.enums.TrustTier;
 import com.aidonormatcher.backend.service.CloudinaryService;
 import com.aidonormatcher.backend.service.NgoService;
+import com.aidonormatcher.backend.service.PledgeService;
 import com.aidonormatcher.backend.service.ReportService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,6 +43,9 @@ class NgoControllerTest {
 
     @Mock
     private ReportService reportService;
+
+    @Mock
+    private PledgeService pledgeService;
 
     @InjectMocks
     private NgoController ngoController;
@@ -96,6 +103,50 @@ class NgoControllerTest {
         assertThat(response.getBody()).isEqualTo(new UrlResponse("https://cdn.example.com/ngo-photo.jpg"));
         verify(cloudinaryService).uploadPhoto(file);
         verify(ngoService).updatePhotoUrl("ngo@example.com", "https://cdn.example.com/ngo-photo.jpg");
+    }
+
+    @Test
+    void receivePledge_returnsUpdatedIncomingPledgeSummary() {
+        User ngoUser = ngoUser();
+        IncomingPledgeResponse responseBody = new IncomingPledgeResponse(
+                44L, 12L, "Alice Donor", "alice@example.com", "Rice packs", "FOOD", 10,
+                "FULFILLED", null, null, 22, 15, 15, 7);
+
+        when(pledgeService.receivePledge(44L, 7L)).thenReturn(responseBody);
+
+        ResponseEntity<IncomingPledgeResponse> response = ngoController.receivePledge(ngoUser, 44L);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isSameAs(responseBody);
+        verify(pledgeService).receivePledge(44L, 7L);
+    }
+
+    @Test
+    void getNgoById_returnsNgoDetailResponse() {
+        NgoDetailResponse detail = new NgoDetailResponse(
+                10L,
+                "Helping Hands",
+                "123 Hope Street",
+                "contact@ngo.org",
+                "+9411222333",
+                "This NGO supports vulnerable families with food, medicine, and shelter assistance.",
+                "FOOD",
+                "https://cdn.example.com/ngo-photo.jpg",
+                88,
+                "TRUSTED",
+                null,
+                6.9271,
+                79.8612,
+                List.of()
+        );
+
+        when(ngoService.getNgoById(10L)).thenReturn(detail);
+
+        ResponseEntity<NgoDetailResponse> response = ngoController.getNgoById(10L);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isSameAs(detail);
+        verify(ngoService).getNgoById(10L);
     }
 
     private User ngoUser() {

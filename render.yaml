@@ -1,0 +1,48 @@
+databases:
+  - name: ai-donor-matcher-db
+    databaseName: aidonormatcher
+    user: aidonormatcher
+    plan: free
+
+services:
+  - type: web
+    name: ai-donor-matcher-backend
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /v3/api-docs
+    envVars:
+      - key: DB_URL
+        fromDatabase:
+          name: ai-donor-matcher-db
+          property: connectionString
+      - key: DB_USERNAME
+        fromDatabase:
+          name: ai-donor-matcher-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: ai-donor-matcher-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION_MS
+        value: "86400000"
+      - key: APP_BASE_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGIN_PATTERNS
+        value: http://localhost:5173,https://*.vercel.app
+      - key: GEOCODING_PROVIDER
+        value: nominatim
+      - key: GEOCODING_NOMINATIM_USER_AGENT
+        value: AI-Donor-Matcher/1.0
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

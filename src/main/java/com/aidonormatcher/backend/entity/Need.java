@@ -34,6 +34,7 @@ public class Need {
 
     private int quantityRequired;
     private int quantityPledged = 0;
+    private int quantityReceived = 0;
 
     @Enumerated(EnumType.STRING)
     private UrgencyLevel urgency;
@@ -52,5 +53,10 @@ public class Need {
     @Transient
     public int getQuantityRemaining() {
         return quantityRequired - quantityPledged;
+    }
+
+    @Transient
+    public int getQuantityRemainingToReceive() {
+        return quantityRequired - quantityReceived;
     }
 }

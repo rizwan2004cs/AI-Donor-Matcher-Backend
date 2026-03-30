@@ -88,13 +88,20 @@ public class NeedService {
     }
 
     public void recalculateStatus(Need need) {
-        int remaining = need.getQuantityRequired() - need.getQuantityPledged();
-        if (need.getQuantityPledged() == 0) {
+        if (need.getQuantityReceived() >= need.getQuantityRequired()) {
+            need.setStatus(NeedStatus.FULFILLED);
+            if (need.getFulfilledAt() == null) {
+                need.setFulfilledAt(LocalDateTime.now());
+            }
+        } else if (need.getQuantityPledged() == 0) {
             need.setStatus(NeedStatus.OPEN);
-        } else if (remaining > 0) {
+            need.setFulfilledAt(null);
+        } else if (need.getQuantityPledged() < need.getQuantityRequired()) {
             need.setStatus(NeedStatus.PARTIALLY_PLEDGED);
+            need.setFulfilledAt(null);
         } else {
             need.setStatus(NeedStatus.FULLY_PLEDGED);
+            need.setFulfilledAt(null);
         }
         needRepository.save(need);
     }
@@ -106,6 +113,10 @@ public class NeedService {
 
         if (!need.getNgo().getUser().getId().equals(ngoUserId)) {
             throw new RuntimeException("Unauthorized.");
+        }
+
+        if (need.getQuantityReceived() < need.getQuantityRequired()) {
+            throw new RuntimeException("Use pledge receipt updates until the received quantity reaches the full need total.");
         }
 
         need.setStatus(NeedStatus.FULFILLED);

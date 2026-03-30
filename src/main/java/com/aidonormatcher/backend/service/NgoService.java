@@ -1,5 +1,7 @@
 package com.aidonormatcher.backend.service;
 
+import com.aidonormatcher.backend.dto.NeedDetailResponse;
+import com.aidonormatcher.backend.dto.NgoDetailResponse;
 import com.aidonormatcher.backend.dto.NgoDiscoveryDTO;
 import com.aidonormatcher.backend.dto.NgoProfileRequest;
 import com.aidonormatcher.backend.entity.Need;
@@ -24,6 +26,7 @@ public class NgoService {
     private final UserRepository userRepository;
     private final TrustScoreService trustScoreService;
     private final GeocodingService geocodingService;
+    private final NeedService needService;
 
     public Ngo getMyProfile(String email) {
         User user = userRepository.findByEmail(email)
@@ -68,8 +71,9 @@ public class NgoService {
         ngoRepository.save(ngo);
     }
 
-    public Ngo getNgoById(Long id) {
+    public NgoDetailResponse getNgoById(Long id) {
         return ngoRepository.findById(id)
+                .map(this::toNgoDetailResponse)
                 .orElseThrow(() -> new RuntimeException("NGO not found."));
     }
 
@@ -89,8 +93,10 @@ public class NgoService {
         double rad = (radius != null) ? radius : 50.0; // default 50km
         List<Object[]> rows = ngoRepository.findNearby(lat, lng, rad, category, search);
         return rows.stream().map(row -> {
-            Ngo ngo = (Ngo) row[0];
+            Long ngoId = ((Number) row[0]).longValue();
             double distanceKm = ((Number) row[1]).doubleValue();
+            Ngo ngo = ngoRepository.findById(ngoId)
+                    .orElseThrow(() -> new RuntimeException("NGO not found."));
 
             Need topNeed = needRepository
                     .findTopByNgoAndStatusInOrderByUrgencyDescCreatedAtAsc(
@@ -102,7 +108,7 @@ public class NgoService {
 
     private NgoDiscoveryDTO buildDiscoveryDTO(Ngo ngo, double distanceKm, Need topNeed) {
         return new NgoDiscoveryDTO(
-                ngo.getId(), ngo.getName(), distanceKm,
+                ngo.getId(), ngo.getName(), ngo.getAddress(), distanceKm,
                 ngo.getTrustScore(),
                 ngo.getTrustTier() != null ? ngo.getTrustTier().name() : "NEW",
                 topNeed != null ? topNeed.getItemName() : null,
@@ -110,6 +116,31 @@ public class NgoService {
                 topNeed != null ? topNeed.getUrgency().name() : null,
                 topNeed != null ? topNeed.getCategory().name() : "OTHER",
                 ngo.getLat(), ngo.getLng(), ngo.getPhotoUrl()
+        );
+    }
+
+    private NgoDetailResponse toNgoDetailResponse(Ngo ngo) {
+        List<NeedDetailResponse> activeNeeds = needRepository.findByNgoAndStatusIn(
+                        ngo, List.of(NeedStatus.OPEN, NeedStatus.PARTIALLY_PLEDGED))
+                .stream()
+                .map(needService::toNeedDetailResponse)
+                .toList();
+
+        return new NgoDetailResponse(
+                ngo.getId(),
+                ngo.getName(),
+                ngo.getAddress(),
+                ngo.getContactEmail(),
+                ngo.getContactPhone(),
+                ngo.getDescription(),
+                ngo.getCategoryOfWork() != null ? ngo.getCategoryOfWork().name() : null,
+                ngo.getPhotoUrl(),
+                ngo.getTrustScore(),
+                ngo.getTrustTier() != null ? ngo.getTrustTier().name() : null,
+                ngo.getVerifiedAt(),
+                ngo.getLat(),
+                ngo.getLng(),
+                activeNeeds
         );
     }
 

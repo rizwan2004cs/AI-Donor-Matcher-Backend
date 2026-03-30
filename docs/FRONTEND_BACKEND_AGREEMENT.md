@@ -247,6 +247,7 @@ Response:
 - `PUT /api/ngo/my/profile`
 - `POST /api/ngo/my/photo`
 - `GET /api/ngo/my/pledges`
+- `PATCH /api/ngo/my/pledges/{pledgeId}/receive`
 - `GET /api/ngo/my/needs`
 - `POST /api/needs`
 - `PUT /api/needs/{id}`
@@ -334,6 +335,49 @@ Supported query params:
 
 Frontend may call this with any combination of those filters.
 
+### Public NGO detail
+`GET /api/ngos/{id}`
+
+Response shape:
+```json
+{
+  "id": 5,
+  "name": "Helping Hands",
+  "address": "123 Main Street, Colombo",
+  "contactEmail": "contact@helpinghands.org",
+  "contactPhone": "+94 77 123 4567",
+  "description": "Supporting families with essential supplies.",
+  "categoryOfWork": "FOOD",
+  "photoUrl": "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+  "trustScore": 82,
+  "trustTier": "TRUSTED",
+  "verifiedAt": "2026-03-30T10:15:00",
+  "lat": 6.9271,
+  "lng": 79.8612,
+  "activeNeeds": [
+    {
+      "id": 12,
+      "ngoId": 5,
+      "ngoName": "Helping Hands",
+      "ngoAddress": "123 Main Street, Colombo",
+      "ngoPhotoUrl": "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+      "ngoTrustScore": 82,
+      "ngoTrustTier": "TRUSTED",
+      "category": "FOOD",
+      "itemName": "Rice packs",
+      "description": "5kg rice packs for 50 families",
+      "quantityRequired": 50,
+      "quantityPledged": 30,
+      "quantityRemaining": 20,
+      "urgency": "URGENT",
+      "expiryDate": "2026-04-15",
+      "status": "PARTIALLY_PLEDGED",
+      "createdAt": "2026-03-30T10:15:00"
+    }
+  ]
+}
+```
+
 ### Report an NGO
 `POST /api/ngos/{id}/report`
 
@@ -362,11 +406,52 @@ Response item shape:
   "donorName": "Alice Donor",
   "donorEmail": "alice@example.com",
   "itemName": "Rice packs",
+  "category": "FOOD",
   "quantity": 10,
   "status": "ACTIVE",
-  "createdAt": "2026-03-30T10:15:00"
+  "createdAt": "2026-03-30T10:15:00",
+  "expiresAt": "2026-04-01T10:15:00",
+  "needQuantityRequired": 22,
+  "needQuantityPledged": 15,
+  "needQuantityReceived": 15,
+  "needQuantityRemaining": 7
 }
 ```
+
+Important behavior:
+- this list now returns both incoming `ACTIVE` pledges and already confirmed `FULFILLED` pledges for the NGO
+- `needQuantityRemaining` is based on quantities actually received by the NGO, not only donor commitments
+- frontend should use `status` to decide whether a pledge still needs NGO confirmation
+
+### Mark an incoming pledge as received
+`PATCH /api/ngo/my/pledges/{pledgeId}/receive`
+
+Response shape:
+```json
+{
+  "pledgeId": 44,
+  "needId": 12,
+  "donorName": "Alice Donor",
+  "donorEmail": "alice@example.com",
+  "itemName": "Rice packs",
+  "category": "FOOD",
+  "quantity": 10,
+  "status": "FULFILLED",
+  "createdAt": "2026-03-30T10:15:00",
+  "expiresAt": "2026-04-01T10:15:00",
+  "needQuantityRequired": 22,
+  "needQuantityPledged": 15,
+  "needQuantityReceived": 15,
+  "needQuantityRemaining": 7
+}
+```
+
+Receipt behavior:
+- only the owning NGO can call this endpoint
+- only `ACTIVE` pledges can be marked as received
+- marking a pledge as received moves it to `FULFILLED`
+- the need is automatically recalculated after each received pledge
+- once received quantity reaches the full required amount, the need becomes `FULFILLED`
 
 ## 7. Needs Contract
 

@@ -58,7 +58,7 @@ class PledgeServiceTest {
         ngo = Ngo.builder().id(10L).user(ngoUser).name("Helping Hands")
                 .contactEmail("ngo@org.com").address("123 St").photoUrl("https://cdn.example.com/ngo.jpg").build();
         need = Need.builder().id(50L).ngo(ngo).itemName("Food")
-                .quantityRequired(10).quantityPledged(0).category(com.aidonormatcher.backend.enums.NeedCategory.FOOD)
+                .quantityRequired(10).quantityPledged(0).quantityReceived(0).category(com.aidonormatcher.backend.enums.NeedCategory.FOOD)
                 .status(NeedStatus.OPEN).build();
     }
 
@@ -203,9 +203,11 @@ class PledgeServiceTest {
                 .quantity(3)
                 .status(PledgeStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
+                .expiresAt(LocalDateTime.now().plusHours(48))
                 .build();
         when(ngoRepository.findByUserId(10L)).thenReturn(Optional.of(ngo));
-        when(pledgeRepository.findByNeedNgoIdAndStatusOrderByCreatedAtDesc(10L, PledgeStatus.ACTIVE))
+        when(pledgeRepository.findByNeedNgoIdAndStatusInOrderByCreatedAtDesc(
+                10L, List.of(PledgeStatus.ACTIVE, PledgeStatus.FULFILLED)))
                 .thenReturn(List.of(pledge));
 
         List<IncomingPledgeResponse> responses = pledgeService.getIncomingPledges(10L);
@@ -214,5 +216,53 @@ class PledgeServiceTest {
         assertThat(responses.get(0).donorName()).isEqualTo("Alice Donor");
         assertThat(responses.get(0).donorEmail()).isEqualTo("donor@example.com");
         assertThat(responses.get(0).itemName()).isEqualTo("Food");
+        assertThat(responses.get(0).category()).isEqualTo("FOOD");
+        assertThat(responses.get(0).needQuantityRemaining()).isEqualTo(10);
+    }
+
+    @Test
+    void receivePledge_success_marksPledgeFulfilledAndUpdatesNeedReceivedTotals() {
+        Pledge pledge = Pledge.builder()
+                .id(200L)
+                .donor(donor)
+                .need(need)
+                .quantity(3)
+                .status(PledgeStatus.ACTIVE)
+                .createdAt(LocalDateTime.now())
+                .expiresAt(LocalDateTime.now().plusHours(48))
+                .build();
+        need.setQuantityPledged(3);
+        when(pledgeRepository.findById(200L)).thenReturn(Optional.of(pledge));
+
+        IncomingPledgeResponse response = pledgeService.receivePledge(200L, 10L);
+
+        assertThat(pledge.getStatus()).isEqualTo(PledgeStatus.FULFILLED);
+        assertThat(need.getQuantityReceived()).isEqualTo(3);
+        assertThat(response.status()).isEqualTo("FULFILLED");
+        assertThat(response.needQuantityRemaining()).isEqualTo(7);
+        verify(needService).recalculateStatus(need);
+        verify(ngoRepository).save(ngo);
+    }
+
+    @Test
+    void receivePledge_wrongNgo_throwsRuntimeException() {
+        Pledge pledge = Pledge.builder().id(200L).donor(donor).need(need)
+                .quantity(3).status(PledgeStatus.ACTIVE).build();
+        when(pledgeRepository.findById(200L)).thenReturn(Optional.of(pledge));
+
+        assertThatThrownBy(() -> pledgeService.receivePledge(200L, 999L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Unauthorized");
+    }
+
+    @Test
+    void receivePledge_nonActive_throwsRuntimeException() {
+        Pledge pledge = Pledge.builder().id(200L).donor(donor).need(need)
+                .quantity(3).status(PledgeStatus.CANCELLED).build();
+        when(pledgeRepository.findById(200L)).thenReturn(Optional.of(pledge));
+
+        assertThatThrownBy(() -> pledgeService.receivePledge(200L, 10L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Only active pledges");
     }
 }

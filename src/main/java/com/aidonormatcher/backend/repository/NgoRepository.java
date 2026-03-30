@@ -27,7 +27,7 @@ public interface NgoRepository extends JpaRepository<Ngo, Long> {
     long countByStatus(NgoStatus status);
 
     @Query(value = """
-            SELECT *
+            SELECT nearby_ngos.id, nearby_ngos.distance_km
             FROM (
                 SELECT n.*,
                 (6371 * acos(
