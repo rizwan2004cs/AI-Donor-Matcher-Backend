@@ -1,5 +1,6 @@
 package com.aidonormatcher.backend.controller;
 
+import com.aidonormatcher.backend.dto.IncomingPledgeResponse;
 import com.aidonormatcher.backend.dto.MessageResponse;
 import com.aidonormatcher.backend.dto.NgoDiscoveryDTO;
 import com.aidonormatcher.backend.dto.NgoProfileRequest;
@@ -9,6 +10,7 @@ import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.User;
 import com.aidonormatcher.backend.service.CloudinaryService;
 import com.aidonormatcher.backend.service.NgoService;
+import com.aidonormatcher.backend.service.PledgeService;
 import com.aidonormatcher.backend.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,6 +39,7 @@ public class NgoController {
 
     private final NgoService ngoService;
     private final CloudinaryService cloudinaryService;
+    private final PledgeService pledgeService;
     private final ReportService reportService;
 
     @Operation(summary = "Get the authenticated NGO profile")
@@ -65,6 +68,13 @@ public class NgoController {
         String url = cloudinaryService.uploadPhoto(file);
         ngoService.updatePhotoUrl(user.getEmail(), url);
         return ResponseEntity.ok(new UrlResponse(url));
+    }
+
+    @Operation(summary = "List incoming active pledges for the authenticated NGO")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/api/ngo/my/pledges")
+    public ResponseEntity<List<IncomingPledgeResponse>> getIncomingPledges(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(pledgeService.getIncomingPledges(user.getId()));
     }
 
     @Operation(summary = "Discover approved NGOs")

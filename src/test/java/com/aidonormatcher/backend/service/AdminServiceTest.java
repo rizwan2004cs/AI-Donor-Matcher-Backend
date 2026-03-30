@@ -1,5 +1,6 @@
 package com.aidonormatcher.backend.service;
 
+import com.aidonormatcher.backend.dto.NeedDetailResponse;
 import com.aidonormatcher.backend.dto.NeedRequest;
 import com.aidonormatcher.backend.entity.Need;
 import com.aidonormatcher.backend.entity.Ngo;
@@ -38,6 +39,7 @@ class AdminServiceTest {
     @Mock private ReportRepository reportRepository;
     @Mock private TrustScoreService trustScoreService;
     @Mock private EmailService emailService;
+    @Mock private NeedService needService;
 
     @InjectMocks
     private AdminService adminService;
@@ -168,5 +170,19 @@ class AdminServiceTest {
                 "activeNeeds", "pledgesToday", "fulfillmentsThisMonth");
         assertThat(stats.get("totalUsers")).isEqualTo(10L);
         assertThat(stats.get("activeNeeds")).isEqualTo(12L);
+    }
+
+    @Test
+    void getNgoNeeds_returnsMappedNeedDetails() {
+        NeedDetailResponse detail = new NeedDetailResponse(
+                100L, 1L, "Test NGO", "123 Main Street", null, 60, "ESTABLISHED",
+                "FOOD", "Food", "Rice packs", 10, 0, 10, "NORMAL", null, "OPEN", LocalDateTime.now());
+        when(ngoRepository.findById(1L)).thenReturn(Optional.of(ngo));
+        when(needRepository.findByNgo(ngo)).thenReturn(List.of(need));
+        when(needService.toNeedDetailResponse(need)).thenReturn(detail);
+
+        List<NeedDetailResponse> responses = adminService.getNgoNeeds(1L);
+
+        assertThat(responses).containsExactly(detail);
     }
 }

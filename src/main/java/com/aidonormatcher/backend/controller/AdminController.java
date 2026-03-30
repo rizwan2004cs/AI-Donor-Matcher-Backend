@@ -1,6 +1,7 @@
 package com.aidonormatcher.backend.controller;
 
 import com.aidonormatcher.backend.dto.MessageResponse;
+import com.aidonormatcher.backend.dto.NeedDetailResponse;
 import com.aidonormatcher.backend.dto.NeedRequest;
 import com.aidonormatcher.backend.dto.ReasonRequest;
 import com.aidonormatcher.backend.entity.Need;
@@ -44,6 +45,12 @@ public class AdminController {
     @GetMapping("/ngos")
     public ResponseEntity<List<Ngo>> getAllNgos() {
         return ResponseEntity.ok(adminService.getAllNgos());
+    }
+
+    @Operation(summary = "List all needs belonging to a specific NGO")
+    @GetMapping("/ngos/{id}/needs")
+    public ResponseEntity<List<NeedDetailResponse>> getNgoNeeds(@PathVariable Long id) {
+        return ResponseEntity.ok(adminService.getNgoNeeds(id));
     }
 
     @Operation(summary = "Approve an NGO")

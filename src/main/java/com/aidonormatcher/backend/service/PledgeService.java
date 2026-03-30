@@ -1,6 +1,8 @@
 package com.aidonormatcher.backend.service;
 
+import com.aidonormatcher.backend.dto.IncomingPledgeResponse;
 import com.aidonormatcher.backend.dto.PledgeRequest;
+import com.aidonormatcher.backend.dto.PledgeDetailResponse;
 import com.aidonormatcher.backend.dto.PledgeResponse;
 import com.aidonormatcher.backend.entity.Need;
 import com.aidonormatcher.backend.entity.Ngo;
@@ -113,6 +115,14 @@ public class PledgeService {
                 .orElseThrow(() -> new RuntimeException("Pledge not found."));
     }
 
+    public PledgeDetailResponse getPledgeDetails(Long pledgeId, Long donorId) {
+        Pledge pledge = getPledgeById(pledgeId);
+        if (!pledge.getDonor().getId().equals(donorId)) {
+            throw new RuntimeException("Unauthorized.");
+        }
+        return toPledgeDetailResponse(pledge);
+    }
+
     public List<Pledge> getActivePledges(Long donorId) {
         User donor = userRepository.findById(donorId)
                 .orElseThrow(() -> new RuntimeException("Donor not found."));
@@ -123,5 +133,49 @@ public class PledgeService {
         User donor = userRepository.findById(donorId)
                 .orElseThrow(() -> new RuntimeException("Donor not found."));
         return pledgeRepository.findByDonor(donor);
+    }
+
+    public List<IncomingPledgeResponse> getIncomingPledges(Long ngoUserId) {
+        Ngo ngo = ngoRepository.findByUserId(ngoUserId)
+                .orElseThrow(() -> new RuntimeException("NGO profile not found."));
+        return pledgeRepository.findByNeedNgoIdAndStatusOrderByCreatedAtDesc(ngo.getId(), PledgeStatus.ACTIVE)
+                .stream()
+                .map(this::toIncomingPledgeResponse)
+                .toList();
+    }
+
+    private PledgeDetailResponse toPledgeDetailResponse(Pledge pledge) {
+        Need need = pledge.getNeed();
+        Ngo ngo = need.getNgo();
+        return new PledgeDetailResponse(
+                pledge.getId(),
+                need.getId(),
+                ngo.getId(),
+                ngo.getName(),
+                ngo.getPhotoUrl(),
+                need.getItemName(),
+                need.getCategory() != null ? need.getCategory().name() : null,
+                pledge.getQuantity(),
+                pledge.getStatus() != null ? pledge.getStatus().name() : null,
+                pledge.getCreatedAt(),
+                pledge.getExpiresAt(),
+                ngo.getLat(),
+                ngo.getLng(),
+                ngo.getAddress(),
+                ngo.getContactEmail()
+        );
+    }
+
+    private IncomingPledgeResponse toIncomingPledgeResponse(Pledge pledge) {
+        return new IncomingPledgeResponse(
+                pledge.getId(),
+                pledge.getNeed().getId(),
+                pledge.getDonor().getFullName(),
+                pledge.getDonor().getEmail(),
+                pledge.getNeed().getItemName(),
+                pledge.getQuantity(),
+                pledge.getStatus() != null ? pledge.getStatus().name() : null,
+                pledge.getCreatedAt()
+        );
     }
 }

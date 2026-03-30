@@ -1,5 +1,6 @@
 package com.aidonormatcher.backend.controller;
 
+import com.aidonormatcher.backend.dto.PledgeDetailResponse;
 import com.aidonormatcher.backend.dto.PledgeRequest;
 import com.aidonormatcher.backend.dto.PledgeResponse;
 import com.aidonormatcher.backend.entity.Pledge;
@@ -37,6 +38,14 @@ public class PledgeController {
             @AuthenticationPrincipal User user,
             @Valid @RequestBody PledgeRequest request) {
         return ResponseEntity.ok(pledgeService.createPledge(request, user.getId()));
+    }
+
+    @Operation(summary = "Get a pledge by id for delivery-view refresh")
+    @GetMapping("/{id}")
+    public ResponseEntity<PledgeDetailResponse> getPledgeDetail(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(pledgeService.getPledgeDetails(id, user.getId()));
     }
 
     @Operation(summary = "Cancel an active pledge")

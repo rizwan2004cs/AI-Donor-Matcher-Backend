@@ -1,5 +1,6 @@
 package com.aidonormatcher.backend.service;
 
+import com.aidonormatcher.backend.dto.NeedDetailResponse;
 import com.aidonormatcher.backend.dto.NeedRequest;
 import com.aidonormatcher.backend.entity.Need;
 import com.aidonormatcher.backend.entity.Ngo;
@@ -8,6 +9,7 @@ import com.aidonormatcher.backend.enums.NeedCategory;
 import com.aidonormatcher.backend.enums.NeedStatus;
 import com.aidonormatcher.backend.enums.NgoStatus;
 import com.aidonormatcher.backend.enums.Role;
+import com.aidonormatcher.backend.enums.TrustTier;
 import com.aidonormatcher.backend.enums.UrgencyLevel;
 import com.aidonormatcher.backend.repository.NeedRepository;
 import com.aidonormatcher.backend.repository.NgoRepository;
@@ -216,5 +218,25 @@ class NeedServiceTest {
         List<Need> result = needService.getNeedsByNgo(ngo);
 
         assertThat(result).containsExactly(need);
+    }
+
+    @Test
+    void getNeedDetail_returnsSafeMappedResponse() {
+        ngo.setName("Helping Hands");
+        ngo.setAddress("123 Main Street");
+        ngo.setPhotoUrl("https://cdn.example.com/ngo.jpg");
+        ngo.setTrustScore(88);
+        ngo.setTrustTier(TrustTier.TRUSTED);
+        need.setCategory(NeedCategory.CLOTHING);
+        need.setUrgency(UrgencyLevel.URGENT);
+        when(needRepository.findById(100L)).thenReturn(Optional.of(need));
+
+        NeedDetailResponse response = needService.getNeedDetail(100L);
+
+        assertThat(response.id()).isEqualTo(100L);
+        assertThat(response.ngoName()).isEqualTo("Helping Hands");
+        assertThat(response.ngoTrustTier()).isEqualTo("TRUSTED");
+        assertThat(response.quantityRemaining()).isEqualTo(10);
+        assertThat(response.category()).isEqualTo("CLOTHING");
     }
 }

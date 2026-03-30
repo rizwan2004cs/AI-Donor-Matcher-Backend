@@ -33,6 +33,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ngos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/needs/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ngos/*/report").authenticated()
                         // Role-restricted
                         .requestMatchers(HttpMethod.POST, "/api/needs").hasRole("NGO")
