@@ -2,10 +2,12 @@ package com.aidonormatcher.backend.controller;
 
 import com.aidonormatcher.backend.dto.NgoDiscoveryDTO;
 import com.aidonormatcher.backend.dto.NgoProfileRequest;
+import com.aidonormatcher.backend.dto.ReportRequest;
 import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.User;
 import com.aidonormatcher.backend.service.CloudinaryService;
 import com.aidonormatcher.backend.service.NgoService;
+import com.aidonormatcher.backend.service.ReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ public class NgoController {
 
     private final NgoService ngoService;
     private final CloudinaryService cloudinaryService;
+    private final ReportService reportService;
 
     // ─── NGO: Own Profile ────────────────────────────────────────────────────
 
@@ -60,5 +63,14 @@ public class NgoController {
     @GetMapping("/api/ngos/{id}")
     public ResponseEntity<Ngo> getNgoById(@PathVariable Long id) {
         return ResponseEntity.ok(ngoService.getNgoById(id));
+    }
+
+    @PostMapping("/api/ngos/{id}/report")
+    public ResponseEntity<String> submitReport(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            @RequestBody ReportRequest request) {
+        reportService.submitReport(id, request.reason(), user.getId());
+        return ResponseEntity.ok("Report submitted.");
     }
 }

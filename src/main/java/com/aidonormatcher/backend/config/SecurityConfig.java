@@ -32,6 +32,7 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ngos/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/ngos/*/report").authenticated()
                         // Role-restricted
                         .requestMatchers(HttpMethod.POST, "/api/needs").hasRole("NGO")
                         .requestMatchers(HttpMethod.PUT, "/api/needs/**").hasRole("NGO")
