@@ -2,7 +2,7 @@ package com.aidonormatcher.backend.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "Authentication response returned after a successful login.")
+@Schema(description = "Authentication response returned after a successful login or OTP-backed registration.")
 public record LoginResponse(
         @Schema(description = "JWT bearer token.", example = "eyJhbGciOiJIUzI1NiJ9...")
         String token,

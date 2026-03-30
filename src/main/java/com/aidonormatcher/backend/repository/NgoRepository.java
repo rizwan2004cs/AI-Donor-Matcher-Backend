@@ -4,6 +4,8 @@ import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.User;
 import com.aidonormatcher.backend.enums.NgoStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,6 +21,8 @@ public interface NgoRepository extends JpaRepository<Ngo, Long> {
     Optional<Ngo> findByUserId(Long userId);
 
     List<Ngo> findByStatus(NgoStatus status);
+
+    Page<Ngo> findByStatus(NgoStatus status, Pageable pageable);
 
     @Query(value = """
             SELECT *

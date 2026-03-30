@@ -59,21 +59,39 @@ class AuthControllerTest {
                 Role.DONOR,
                 "Colombo",
                 "123456");
+        LoginResponse response = new LoginResponse(
+                "jwt-register-token",
+                1L,
+                "Alice Donor",
+                "alice@example.com",
+                "DONOR",
+                true);
 
-        doNothing().when(authService).register(any(RegisterRequest.class), eq(null));
+        when(authService.register(any(RegisterRequest.class), eq(null))).thenReturn(response);
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Registration successful. You can now log in."));
+                .andExpect(jsonPath("$.token").value("jwt-register-token"))
+                .andExpect(jsonPath("$.userId").value(1))
+                .andExpect(jsonPath("$.email").value("alice@example.com"))
+                .andExpect(jsonPath("$.role").value("DONOR"))
+                .andExpect(jsonPath("$.emailVerified").value(true));
 
         verify(authService).register(any(RegisterRequest.class), eq(null));
     }
 
     @Test
     void registerMultipart_validRequest_returnsCreatedResponse() throws Exception {
-        doNothing().when(authService).register(any(RegisterRequest.class), any());
+        LoginResponse response = new LoginResponse(
+                "jwt-ngo-token",
+                2L,
+                "Helping Hands",
+                "ngo@example.com",
+                "NGO",
+                true);
+        when(authService.register(any(RegisterRequest.class), any())).thenReturn(response);
 
         mockMvc.perform(multipart("/api/auth/register")
                         .file("documents", "sample".getBytes())
@@ -84,7 +102,11 @@ class AuthControllerTest {
                         .param("otp", "654321")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Registration successful. You can now log in."));
+                .andExpect(jsonPath("$.token").value("jwt-ngo-token"))
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.email").value("ngo@example.com"))
+                .andExpect(jsonPath("$.role").value("NGO"))
+                .andExpect(jsonPath("$.emailVerified").value(true));
     }
 
     @Test

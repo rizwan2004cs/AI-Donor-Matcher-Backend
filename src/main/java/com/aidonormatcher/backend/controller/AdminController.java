@@ -1,12 +1,12 @@
 package com.aidonormatcher.backend.controller;
 
+import com.aidonormatcher.backend.dto.AdminNgoSummaryResponse;
+import com.aidonormatcher.backend.dto.AdminReportSummaryResponse;
 import com.aidonormatcher.backend.dto.MessageResponse;
 import com.aidonormatcher.backend.dto.NeedDetailResponse;
 import com.aidonormatcher.backend.dto.NeedRequest;
 import com.aidonormatcher.backend.dto.ReasonRequest;
 import com.aidonormatcher.backend.entity.Need;
-import com.aidonormatcher.backend.entity.Ngo;
-import com.aidonormatcher.backend.entity.Report;
 import com.aidonormatcher.backend.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -37,14 +38,16 @@ public class AdminController {
 
     @Operation(summary = "List NGOs awaiting approval")
     @GetMapping("/ngos/pending")
-    public ResponseEntity<List<Ngo>> getPendingNgos() {
-        return ResponseEntity.ok(adminService.getPendingNgos());
+    public ResponseEntity<List<AdminNgoSummaryResponse>> getPendingNgos(
+            @RequestParam(required = false) Integer limit) {
+        return ResponseEntity.ok(adminService.getPendingNgos(limit));
     }
 
     @Operation(summary = "List all NGO profiles")
     @GetMapping("/ngos")
-    public ResponseEntity<List<Ngo>> getAllNgos() {
-        return ResponseEntity.ok(adminService.getAllNgos());
+    public ResponseEntity<List<AdminNgoSummaryResponse>> getAllNgos(
+            @RequestParam(required = false) Integer limit) {
+        return ResponseEntity.ok(adminService.getAllNgos(limit));
     }
 
     @Operation(summary = "List all needs belonging to a specific NGO")
@@ -78,8 +81,9 @@ public class AdminController {
 
     @Operation(summary = "List NGO reports submitted by donors")
     @GetMapping("/reports")
-    public ResponseEntity<List<Report>> getReports() {
-        return ResponseEntity.ok(adminService.getReports());
+    public ResponseEntity<List<AdminReportSummaryResponse>> getReports(
+            @RequestParam(required = false) Integer limit) {
+        return ResponseEntity.ok(adminService.getReports(limit));
     }
 
     @Operation(summary = "Edit a need as an administrator")

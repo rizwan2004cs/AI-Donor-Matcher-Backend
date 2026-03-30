@@ -41,6 +41,8 @@ class AuthServiceTest {
         private EmailService emailService;
         @Mock
         private RegistrationOtpService registrationOtpService;
+        @Mock
+        private CloudinaryService cloudinaryService;
 
         @InjectMocks
         private AuthService authService;
@@ -51,19 +53,37 @@ class AuthServiceTest {
         void register_donorSucceeds_onlyAfterOtpVerification() {
                 RegisterRequest req = new RegisterRequest(
                                 "Alice", "alice@example.com", "password123", Role.DONOR, "London", "123456");
+                User savedUser = User.builder()
+                                .id(1L)
+                                .fullName("Alice")
+                                .email("alice@example.com")
+                                .password("encoded")
+                                .role(Role.DONOR)
+                                .emailVerified(true)
+                                .location("London")
+                                .createdAt(LocalDateTime.now())
+                                .build();
                 when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
                 when(passwordEncoder.encode("password123")).thenReturn("encoded");
-                when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+                when(userRepository.save(any(User.class))).thenReturn(savedUser);
+                when(jwtService.generateToken(any(User.class))).thenReturn("jwt-register-token");
 
-                authService.register(req, null);
+                LoginResponse response = authService.register(req, null);
 
                 ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-                verify(userRepository, atLeastOnce()).save(captor.capture());
+                verify(userRepository).save(captor.capture());
                 User saved = captor.getValue();
                 assertThat(saved.getEmail()).isEqualTo("alice@example.com");
                 assertThat(saved.getPassword()).isEqualTo("encoded");
                 assertThat(saved.getRole()).isEqualTo(Role.DONOR);
                 assertThat(saved.isEmailVerified()).isTrue();
+                assertThat(saved.getCreatedAt()).isNotNull();
+                assertThat(response.token()).isEqualTo("jwt-register-token");
+                assertThat(response.userId()).isEqualTo(1L);
+                assertThat(response.fullName()).isEqualTo("Alice");
+                assertThat(response.email()).isEqualTo("alice@example.com");
+                assertThat(response.role()).isEqualTo("DONOR");
+                assertThat(response.emailVerified()).isTrue();
                 verify(registrationOtpService).verifyOtp("alice@example.com", "123456");
                 verify(registrationOtpService).clearOtp("alice@example.com");
                 verify(emailService, never()).sendVerificationEmail(any(User.class), anyString());
@@ -74,18 +94,36 @@ class AuthServiceTest {
         void register_ngoRoleAlsoCreatesNgoEntity() {
                 RegisterRequest req = new RegisterRequest(
                                 "NGO Org", "ngo@org.com", "secret", Role.NGO, null, "123456");
+                User savedUser = User.builder()
+                                .id(2L)
+                                .fullName("NGO Org")
+                                .email("ngo@org.com")
+                                .password("enc")
+                                .role(Role.NGO)
+                                .emailVerified(true)
+                                .createdAt(LocalDateTime.now())
+                                .build();
                 when(userRepository.existsByEmail("ngo@org.com")).thenReturn(false);
                 when(passwordEncoder.encode("secret")).thenReturn("enc");
-                when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+                when(userRepository.save(any(User.class))).thenReturn(savedUser);
+                when(jwtService.generateToken(any(User.class))).thenReturn("jwt-ngo-token");
                 when(userRepository.findByRole(Role.ADMIN)).thenReturn(java.util.List.of(
                                 User.builder().id(99L).email("admin@example.com").role(Role.ADMIN).build()));
+                when(ngoRepository.save(any(Ngo.class))).thenAnswer(inv -> inv.getArgument(0));
 
-                authService.register(req, null);
+                LoginResponse response = authService.register(req, null);
 
                 verify(ngoRepository).save(any(Ngo.class));
                 ArgumentCaptor<Ngo> ngoCaptor = ArgumentCaptor.forClass(Ngo.class);
                 verify(ngoRepository).save(ngoCaptor.capture());
                 assertThat(ngoCaptor.getValue().getStatus()).isEqualTo(NgoStatus.PENDING);
+                assertThat(ngoCaptor.getValue().getUser()).isNotNull();
+                assertThat(ngoCaptor.getValue().getUser().getEmail()).isEqualTo("ngo@org.com");
+                assertThat(ngoCaptor.getValue().getUser().getRole()).isEqualTo(Role.NGO);
+                assertThat(response.token()).isEqualTo("jwt-ngo-token");
+                assertThat(response.userId()).isEqualTo(2L);
+                assertThat(response.role()).isEqualTo("NGO");
+                assertThat(response.emailVerified()).isTrue();
                 verify(emailService).sendNgoApplicationAlert(any(User.class), any(Ngo.class));
                 verify(registrationOtpService).verifyOtp("ngo@org.com", "123456");
                 verify(registrationOtpService).clearOtp("ngo@org.com");

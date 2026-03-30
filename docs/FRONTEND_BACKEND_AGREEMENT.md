@@ -29,7 +29,7 @@ Authorization: Bearer <jwt-token>
 ```
 
 ### JWT storage
-- Frontend stores the token returned by login
+- Frontend stores the token returned by login or successful registration
 - Frontend includes the token on protected requests only
 - Frontend should clear the token on logout or `401`
 
@@ -43,13 +43,15 @@ The active registration flow is OTP-first.
 3. Frontend redirects user to the OTP page.
 4. User enters the OTP.
 5. Frontend submits `POST /api/auth/register` with the full registration payload including `otp`.
-6. Backend creates the account only if the OTP is valid.
+6. Backend creates the account only if the OTP is valid and returns the authenticated login payload immediately.
 
 ### Important behavior
 - No account is created before OTP-backed registration succeeds.
 - Successful registration creates the user as already verified.
+- Successful registration also auto-logs in both donors and NGOs.
 - Frontend must not use link-based verification for new registration.
 - `GET /api/auth/verify` exists only as a legacy endpoint and is not part of the active frontend flow.
+- NGO users may still need profile completion or admin approval after auto-login, so frontend should route them using `role` first and then fetch `GET /api/ngo/my/profile` for completion/approval-aware gating.
 
 ## 3. Standard Response Agreement
 
@@ -143,9 +145,16 @@ Multipart note:
 Success response:
 ```json
 {
-  "message": "Registration successful. You can now log in."
+  "token": "jwt-token",
+  "userId": 1,
+  "fullName": "Helping Hands Foundation",
+  "email": "ngo@example.com",
+  "role": "NGO",
+  "emailVerified": true
 }
 ```
+
+Frontend should treat this response exactly like the login response and persist the token immediately.
 
 ### Login
 `POST /api/auth/login`
@@ -172,6 +181,7 @@ Response:
 
 Frontend should use `role` to route users to the correct dashboard.
 If the user is an NGO and the app needs completion gating, frontend must fetch `GET /api/ngo/my/profile` after login because login does not include `profileComplete`.
+The same post-login rule applies after successful NGO registration because registration now auto-logs in immediately.
 
 ### Resend verification OTP
 `POST /api/auth/resend-verification`
@@ -284,6 +294,17 @@ Request shape:
   "categoryOfWork": "FOOD"
 }
 ```
+
+Address geocoding behavior:
+- backend uses OpenStreetMap Nominatim for NGO address geocoding
+- when `address` is saved, backend resolves and stores `lat` and `lng`
+- backend tries the full address first and then broader comma-separated area fallbacks if the full address is too specific or not indexed
+- example fallback path: `Door No 12, Mulapet, Nellore` -> `Mulapet, Nellore` -> `Nellore`
+- if all fallback queries fail or the provider is unavailable, backend rejects the save with a clear runtime error
+- backend does not repeatedly retry the same candidate query in the request path
+- current NGO signup does not collect the structured map address, so first geocoding usually happens on the first profile save
+
+Frontend should expect `lat` and `lng` to remain available in the NGO responses already used by the app.
 
 ### Upload NGO photo
 `POST /api/ngo/my/photo`
@@ -566,6 +587,7 @@ These workflows are not yet part of the agreed backend contract:
 
 - Use the OTP-first registration flow exactly as documented.
 - Do not use link-based verification for new signup.
+- Treat successful registration as an authenticated session and persist the returned JWT immediately.
 - Send `Bearer` token on protected routes.
 - Handle `204` responses without trying to parse JSON.
 - Read validation errors from `fieldErrors` when present.

@@ -1,10 +1,14 @@
 package com.aidonormatcher.backend.service;
 
+import com.aidonormatcher.backend.dto.AdminNgoSummaryResponse;
+import com.aidonormatcher.backend.dto.AdminReportSummaryResponse;
 import com.aidonormatcher.backend.dto.NeedDetailResponse;
 import com.aidonormatcher.backend.entity.*;
 import com.aidonormatcher.backend.enums.*;
 import com.aidonormatcher.backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +21,9 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class AdminService {
+    private static final Sort NGO_LIST_SORT = Sort.by(
+            Sort.Order.desc("createdAt"),
+            Sort.Order.desc("id"));
 
     private final NgoRepository ngoRepository;
     private final NeedRepository needRepository;
@@ -27,12 +34,29 @@ public class AdminService {
     private final EmailService emailService;
     private final NeedService needService;
 
-    public List<Ngo> getPendingNgos() {
-        return ngoRepository.findByStatus(NgoStatus.PENDING);
+    public List<AdminNgoSummaryResponse> getPendingNgos(Integer limit) {
+        if (limit == null || limit <= 0) {
+            return ngoRepository.findByStatus(NgoStatus.PENDING).stream()
+                    .map(this::toAdminNgoSummary)
+                    .toList();
+        }
+        return ngoRepository.findByStatus(
+                NgoStatus.PENDING,
+                PageRequest.of(0, limit, NGO_LIST_SORT)
+        ).getContent().stream()
+                .map(this::toAdminNgoSummary)
+                .toList();
     }
 
-    public List<Ngo> getAllNgos() {
-        return ngoRepository.findAll();
+    public List<AdminNgoSummaryResponse> getAllNgos(Integer limit) {
+        if (limit == null || limit <= 0) {
+            return ngoRepository.findAll(NGO_LIST_SORT).stream()
+                    .map(this::toAdminNgoSummary)
+                    .toList();
+        }
+        return ngoRepository.findAll(PageRequest.of(0, limit, NGO_LIST_SORT)).getContent().stream()
+                .map(this::toAdminNgoSummary)
+                .toList();
     }
 
     @Transactional
@@ -113,8 +137,15 @@ public class AdminService {
         return needRepository.save(need);
     }
 
-    public List<Report> getReports() {
-        return reportRepository.findAllByOrderByReportedAtDesc();
+    public List<AdminReportSummaryResponse> getReports(Integer limit) {
+        if (limit == null || limit <= 0) {
+            return reportRepository.findAllByOrderByReportedAtDesc().stream()
+                    .map(this::toAdminReportSummary)
+                    .toList();
+        }
+        return reportRepository.findAllByOrderByReportedAtDesc(PageRequest.of(0, limit)).stream()
+                .map(this::toAdminReportSummary)
+                .toList();
     }
 
     public List<NeedDetailResponse> getNgoNeeds(Long ngoId) {
@@ -123,6 +154,46 @@ public class AdminService {
         return needRepository.findByNgo(ngo).stream()
                 .map(needService::toNeedDetailResponse)
                 .toList();
+    }
+
+    private AdminNgoSummaryResponse toAdminNgoSummary(Ngo ngo) {
+        User user = ngo.getUser();
+        String email = ngo.getContactEmail();
+        if ((email == null || email.isBlank()) && user != null) {
+            email = user.getEmail();
+        }
+
+        return new AdminNgoSummaryResponse(
+                ngo.getId(),
+                user != null ? user.getId() : null,
+                ngo.getName(),
+                email,
+                ngo.getAddress(),
+                ngo.getPhotoUrl(),
+                ngo.getDocumentUrl(),
+                ngo.getStatus() != null ? ngo.getStatus().name() : null,
+                ngo.getCategoryOfWork() != null ? ngo.getCategoryOfWork().name() : null,
+                ngo.getTrustScore(),
+                ngo.getTrustTier() != null ? ngo.getTrustTier().name() : null,
+                ngo.getRejectionReason(),
+                ngo.getVerifiedAt(),
+                ngo.getCreatedAt()
+        );
+    }
+
+    private AdminReportSummaryResponse toAdminReportSummary(Report report) {
+        Ngo ngo = report.getNgo();
+        User reporter = report.getReporter();
+
+        return new AdminReportSummaryResponse(
+                report.getId(),
+                ngo != null ? ngo.getId() : null,
+                ngo != null ? ngo.getName() : null,
+                ngo != null && ngo.getStatus() != null ? ngo.getStatus().name() : null,
+                report.getReason(),
+                reporter != null ? reporter.getEmail() : null,
+                report.getReportedAt()
+        );
     }
 
     public Map<String, Object> getStats() {
@@ -135,6 +206,8 @@ public class AdminService {
         stats.put("totalUsers", userRepository.count());
         stats.put("totalNgos", ngoRepository.count());
         stats.put("pendingNgos", ngoRepository.findByStatus(NgoStatus.PENDING).size());
+        stats.put("approvedNgos", ngoRepository.findByStatus(NgoStatus.APPROVED).size());
+        stats.put("suspendedNgos", ngoRepository.findByStatus(NgoStatus.SUSPENDED).size());
         stats.put("totalNeeds", needRepository.count());
         stats.put("totalPledges", pledgeRepository.count());
         stats.put("totalReports", reportRepository.count());

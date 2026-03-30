@@ -10,18 +10,10 @@ import com.aidonormatcher.backend.repository.NeedRepository;
 import com.aidonormatcher.backend.repository.NgoRepository;
 import com.aidonormatcher.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +23,7 @@ public class NgoService {
     private final NeedRepository needRepository;
     private final UserRepository userRepository;
     private final TrustScoreService trustScoreService;
+    private final GeocodingService geocodingService;
 
     public Ngo getMyProfile(String email) {
         User user = userRepository.findByEmail(email)
@@ -47,18 +40,16 @@ public class NgoService {
                 .orElseThrow(() -> new RuntimeException("NGO profile not found."));
 
         if (req.name() != null) ngo.setName(req.name());
-        if (req.address() != null) ngo.setAddress(req.address());
         if (req.contactEmail() != null) ngo.setContactEmail(req.contactEmail());
         if (req.contactPhone() != null) ngo.setContactPhone(req.contactPhone());
         if (req.description() != null) ngo.setDescription(req.description());
         if (req.categoryOfWork() != null) ngo.setCategoryOfWork(req.categoryOfWork());
 
-        ngo.setProfileComplete(checkProfileComplete(ngo));
-
-        // Geocode address if provided
         if (req.address() != null) {
-            geocodeAddress(ngo);
+            applyAddressUpdate(ngo, req.address());
         }
+
+        ngo.setProfileComplete(checkProfileComplete(ngo));
 
         ngoRepository.save(ngo);
 
@@ -131,22 +122,18 @@ public class NgoService {
                 && ngo.getCategoryOfWork() != null;
     }
 
-    @SuppressWarnings("unchecked")
-    private void geocodeAddress(Ngo ngo) {
-        try {
-            String encoded = URLEncoder.encode(ngo.getAddress(), StandardCharsets.UTF_8);
-            String url = "https://nominatim.openstreetmap.org/search?q=" + encoded + "&format=json&limit=1";
-            RestTemplate rest = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("User-Agent", "AIDonorMatcher/1.0");
-            ResponseEntity<List> res = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), List.class);
-            if (res.getBody() != null && !res.getBody().isEmpty()) {
-                Map<?, ?> result = (Map<?, ?>) res.getBody().get(0);
-                ngo.setLat(Double.parseDouble(result.get("lat").toString()));
-                ngo.setLng(Double.parseDouble(result.get("lon").toString()));
-            }
-        } catch (Exception e) {
-            // Geocoding failure is non-fatal; log and continue
+    private void applyAddressUpdate(Ngo ngo, String newAddress) {
+        String trimmedAddress = newAddress.trim();
+        if (trimmedAddress.isBlank()) {
+            ngo.setAddress(trimmedAddress);
+            ngo.setLat(null);
+            ngo.setLng(null);
+            return;
         }
+
+        GeocodingService.GeocodedPoint point = geocodingService.geocode(trimmedAddress);
+        ngo.setAddress(trimmedAddress);
+        ngo.setLat(point.lat());
+        ngo.setLng(point.lng());
     }
 }

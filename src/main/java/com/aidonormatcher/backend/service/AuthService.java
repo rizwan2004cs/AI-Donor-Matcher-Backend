@@ -69,7 +69,7 @@ public class AuthService {
     }
 
     @Transactional
-    public void register(RegisterRequest req, MultipartFile document) {
+    public LoginResponse register(RegisterRequest req, MultipartFile document) {
         if (userRepository.existsByEmail(req.email())) {
             throw new RuntimeException("Email already registered.");
         }
@@ -85,7 +85,7 @@ public class AuthService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        userRepository.save(user);
+        user = userRepository.save(user);
 
         // If NGO, create linked Ngo entity and Handle document upload
         if (req.role() == Role.NGO) {
@@ -115,6 +115,7 @@ public class AuthService {
         }
 
         registrationOtpService.clearOtp(req.email());
+        return buildLoginResponse(user);
     }
 
     @Transactional

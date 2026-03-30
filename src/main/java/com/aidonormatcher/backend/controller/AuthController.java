@@ -25,37 +25,35 @@ public class AuthController {
 
     private final AuthService authService;
 
-    private static final String REGISTRATION_MESSAGE = "Registration successful. You can now log in.";
-
     @Operation(
             summary = "Register a donor or NGO account using OTP",
-            description = "Creates the account only after the OTP submitted with the registration payload is validated."
+            description = "Creates the account only after the OTP submitted with the registration payload is validated, then returns the authenticated user payload for immediate auto-login."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Account registered successfully"),
+            @ApiResponse(responseCode = "200", description = "Account registered successfully and logged in"),
             @ApiResponse(responseCode = "400", description = "Validation error or invalid OTP")
     })
     @PostMapping(value = "/register", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<MessageResponse> registerJson(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request, null);
-        return ResponseEntity.ok(new MessageResponse(REGISTRATION_MESSAGE));
+    public ResponseEntity<LoginResponse> registerJson(@Valid @RequestBody RegisterRequest request) {
+        LoginResponse response = authService.register(request, null);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(
             summary = "Register an NGO account with multipart form data",
-            description = "Accepts the registration fields and an optional NGO document file in the same request."
+            description = "Accepts the registration fields and an optional NGO document file in the same request, then returns the authenticated user payload for immediate auto-login."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Account registered successfully"),
+            @ApiResponse(responseCode = "200", description = "Account registered successfully and logged in"),
             @ApiResponse(responseCode = "400", description = "Validation error or invalid OTP")
     })
     @PostMapping(value = "/register", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<MessageResponse> registerMultipart(
+    public ResponseEntity<LoginResponse> registerMultipart(
             @Valid @ModelAttribute RegisterRequest request,
             @Parameter(description = "Optional NGO verification document")
             @RequestPart(value = "documents", required = false) org.springframework.web.multipart.MultipartFile document) {
-        authService.register(request, document);
-        return ResponseEntity.ok(new MessageResponse(REGISTRATION_MESSAGE));
+        LoginResponse response = authService.register(request, document);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(

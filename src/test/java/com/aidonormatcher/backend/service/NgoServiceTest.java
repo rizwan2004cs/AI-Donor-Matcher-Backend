@@ -3,6 +3,7 @@ package com.aidonormatcher.backend.service;
 import com.aidonormatcher.backend.dto.NgoProfileRequest;
 import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.User;
+import com.aidonormatcher.backend.service.GeocodingService.GeocodedPoint;
 import com.aidonormatcher.backend.enums.NgoStatus;
 import com.aidonormatcher.backend.enums.Role;
 import com.aidonormatcher.backend.repository.NeedRepository;
@@ -29,6 +30,7 @@ class NgoServiceTest {
     @Mock private NeedRepository needRepository;
     @Mock private UserRepository userRepository;
     @Mock private TrustScoreService trustScoreService;
+    @Mock private GeocodingService geocodingService;
 
     @InjectMocks
     private NgoService ngoService;
@@ -83,6 +85,44 @@ class NgoServiceTest {
         assertThat(updated.getName()).isEqualTo("Updated NGO");
         assertThat(updated.getContactEmail()).isEqualTo("updated@ngo.com");
         verify(trustScoreService).recalculate(ngo);
+    }
+
+    @Test
+    void updateProfile_addressProvided_geocodesAndStoresCoordinates() {
+        NgoProfileRequest req = new NgoProfileRequest(
+                "Updated NGO", "123 Hope Street", "updated@ngo.com",
+                "0987654321", "An updated description that is at least fifty characters long here.",
+                null);
+
+        when(userRepository.findByEmail("ngo@org.com")).thenReturn(Optional.of(user));
+        when(ngoRepository.findByUser(user)).thenReturn(Optional.of(ngo));
+        when(ngoRepository.save(any(Ngo.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(geocodingService.geocode("123 Hope Street")).thenReturn(new GeocodedPoint(6.9271, 79.8612));
+
+        Ngo updated = ngoService.updateProfile("ngo@org.com", req);
+
+        assertThat(updated.getLat()).isEqualTo(6.9271);
+        assertThat(updated.getLng()).isEqualTo(79.8612);
+        verify(geocodingService).geocode("123 Hope Street");
+    }
+
+    @Test
+    void updateProfile_geocodingFailure_throwsRuntimeExceptionAndDoesNotSave() {
+        NgoProfileRequest req = new NgoProfileRequest(
+                "Updated NGO", "Unknown place", "updated@ngo.com",
+                "0987654321", "An updated description that is at least fifty characters long here.",
+                null);
+
+        when(userRepository.findByEmail("ngo@org.com")).thenReturn(Optional.of(user));
+        when(ngoRepository.findByUser(user)).thenReturn(Optional.of(ngo));
+        when(geocodingService.geocode("Unknown place"))
+                .thenThrow(new RuntimeException("Unable to geocode the provided NGO address. Please enter a more specific address."));
+
+        assertThatThrownBy(() -> ngoService.updateProfile("ngo@org.com", req))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Unable to geocode");
+
+        verify(ngoRepository, never()).save(any(Ngo.class));
     }
 
     // ─── getNgoById ──────────────────────────────────────────────────────────

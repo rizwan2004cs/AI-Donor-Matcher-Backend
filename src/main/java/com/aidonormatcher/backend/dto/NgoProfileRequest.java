@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record NgoProfileRequest(
         @Schema(description = "Public NGO name.", example = "Helping Hands")
         String name,
-        @Schema(description = "Public NGO address.", example = "123 Main Street, Colombo")
+        @Schema(description = "Public NGO address. Saving this field triggers automatic backend geocoding and stores lat/lng on the NGO. The backend tries the full address first and then broader area fallbacks if the address is not specific enough.", example = "123 Main Street, Colombo")
         String address,
         @Schema(description = "Contact email displayed to donors.", example = "contact@helpinghands.org")
         String contactEmail,
