@@ -22,6 +22,13 @@ public class EmailService {
         @Value("${app.base-url}")
         private String baseUrl;
 
+        private String getNgoRecipientEmail(Ngo ngo) {
+                if (ngo.getContactEmail() != null && !ngo.getContactEmail().isBlank()) {
+                        return ngo.getContactEmail();
+                }
+                return ngo.getUser() != null ? ngo.getUser().getEmail() : null;
+        }
+
         private void send(String to, String subject, String body) {
                 SimpleMailMessage msg = new SimpleMailMessage();
                 msg.setFrom(fromEmail);
@@ -52,13 +59,13 @@ public class EmailService {
         }
 
         public void sendNgoApprovedEmail(Ngo ngo) {
-                send(ngo.getContactEmail(), "Your NGO application has been approved",
+                send(getNgoRecipientEmail(ngo), "Your NGO application has been approved",
                                 "Congratulations! Complete your profile to go live on the map: "
                                                 + baseUrl + "/dashboard/ngo/complete-profile");
         }
 
         public void sendNgoRejectedEmail(Ngo ngo, String reason) {
-                send(ngo.getContactEmail(), "Your NGO application was not approved",
+                send(getNgoRecipientEmail(ngo), "Your NGO application was not approved",
                                 "Reason: " + reason + "\n\nYou may reapply with corrected documents.");
         }
 
@@ -72,7 +79,7 @@ public class EmailService {
         }
 
         public void sendPledgeCancelledByDonorEmail(Ngo ngo, Pledge pledge) {
-                send(ngo.getContactEmail(), "A pledge was cancelled",
+                send(getNgoRecipientEmail(ngo), "A pledge was cancelled",
                                 pledge.getDonor().getFullName() + " cancelled their pledge of "
                                                 + pledge.getQuantity() + " x " + pledge.getNeed().getItemName() + ".");
         }
@@ -97,12 +104,12 @@ public class EmailService {
         }
 
         public void sendNeedExpiryWarning(Ngo ngo, Need need) {
-                send(ngo.getContactEmail(), "Need expiring soon: " + need.getItemName(),
+                send(getNgoRecipientEmail(ngo), "Need expiring soon: " + need.getItemName(),
                                 "Your need for " + need.getItemName() + " expires on " + need.getExpiryDate() + ".");
         }
 
         public void sendNeedAutoExpiredEmail(Ngo ngo, Need need) {
-                send(ngo.getContactEmail(), "Need closed: " + need.getItemName(),
+                send(getNgoRecipientEmail(ngo), "Need closed: " + need.getItemName(),
                                 "Your need for " + need.getItemName() + " has expired and been closed.");
         }
 

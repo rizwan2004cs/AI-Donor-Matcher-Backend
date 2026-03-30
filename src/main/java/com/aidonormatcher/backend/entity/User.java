@@ -1,5 +1,6 @@
 package com.aidonormatcher.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.aidonormatcher.backend.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,25 +30,34 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false)
     private String email;
 
+    @JsonIgnore
     private String password;
 
     @Enumerated(EnumType.STRING)
     private Role role;
 
     private boolean emailVerified = false;
+
+    @JsonIgnore
     private String emailVerificationToken;
 
     private String location;
     private LocalDateTime createdAt;
 
     // OTP-based email verification state
+    @JsonIgnore
     private String emailVerificationOtp;
+
+    @JsonIgnore
     private LocalDateTime emailVerificationOtpExpiresAt;
+
+    @JsonIgnore
     private Integer emailVerificationOtpAttempts;
 
     // --- UserDetails implementation ---
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
@@ -58,21 +68,25 @@ public class User implements UserDetails {
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonExpired() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonLocked() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isEnabled() {
         return true;
     }
