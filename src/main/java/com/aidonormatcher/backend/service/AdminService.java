@@ -1,5 +1,6 @@
 package com.aidonormatcher.backend.service;
 
+import com.aidonormatcher.backend.dto.NeedDetailResponse;
 import com.aidonormatcher.backend.entity.*;
 import com.aidonormatcher.backend.enums.*;
 import com.aidonormatcher.backend.repository.*;
@@ -24,6 +25,7 @@ public class AdminService {
     private final ReportRepository reportRepository;
     private final TrustScoreService trustScoreService;
     private final EmailService emailService;
+    private final NeedService needService;
 
     public List<Ngo> getPendingNgos() {
         return ngoRepository.findByStatus(NgoStatus.PENDING);
@@ -113,6 +115,14 @@ public class AdminService {
 
     public List<Report> getReports() {
         return reportRepository.findAllByOrderByReportedAtDesc();
+    }
+
+    public List<NeedDetailResponse> getNgoNeeds(Long ngoId) {
+        Ngo ngo = ngoRepository.findById(ngoId)
+                .orElseThrow(() -> new RuntimeException("NGO not found."));
+        return needRepository.findByNgo(ngo).stream()
+                .map(needService::toNeedDetailResponse)
+                .toList();
     }
 
     public Map<String, Object> getStats() {

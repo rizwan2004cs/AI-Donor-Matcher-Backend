@@ -1,5 +1,6 @@
 package com.aidonormatcher.backend.service;
 
+import com.aidonormatcher.backend.dto.NeedDetailResponse;
 import com.aidonormatcher.backend.dto.NeedRequest;
 import com.aidonormatcher.backend.entity.Need;
 import com.aidonormatcher.backend.entity.Ngo;
@@ -114,5 +115,34 @@ public class NeedService {
 
     public List<Need> getNeedsByNgo(Ngo ngo) {
         return needRepository.findByNgo(ngo);
+    }
+
+    public NeedDetailResponse getNeedDetail(Long needId) {
+        Need need = needRepository.findById(needId)
+                .orElseThrow(() -> new RuntimeException("Need not found."));
+        return toNeedDetailResponse(need);
+    }
+
+    public NeedDetailResponse toNeedDetailResponse(Need need) {
+        Ngo ngo = need.getNgo();
+        return new NeedDetailResponse(
+                need.getId(),
+                ngo.getId(),
+                ngo.getName(),
+                ngo.getAddress(),
+                ngo.getPhotoUrl(),
+                ngo.getTrustScore(),
+                ngo.getTrustTier() != null ? ngo.getTrustTier().name() : null,
+                need.getCategory() != null ? need.getCategory().name() : null,
+                need.getItemName(),
+                need.getDescription(),
+                need.getQuantityRequired(),
+                need.getQuantityPledged(),
+                need.getQuantityRemaining(),
+                need.getUrgency() != null ? need.getUrgency().name() : null,
+                need.getExpiryDate(),
+                need.getStatus() != null ? need.getStatus().name() : null,
+                need.getCreatedAt()
+        );
     }
 }

@@ -171,6 +171,7 @@ Response:
 ```
 
 Frontend should use `role` to route users to the correct dashboard.
+If the user is an NGO and the app needs completion gating, frontend must fetch `GET /api/ngo/my/profile` after login because login does not include `profileComplete`.
 
 ### Resend verification OTP
 `POST /api/auth/resend-verification`
@@ -235,6 +236,7 @@ Response:
 - `GET /api/ngo/my/profile`
 - `PUT /api/ngo/my/profile`
 - `POST /api/ngo/my/photo`
+- `GET /api/ngo/my/pledges`
 - `GET /api/ngo/my/needs`
 - `POST /api/needs`
 - `PUT /api/needs/{id}`
@@ -251,6 +253,7 @@ Response:
 ### Admin-only
 - `GET /api/admin/ngos/pending`
 - `GET /api/admin/ngos`
+- `GET /api/admin/ngos/{id}/needs`
 - `POST /api/admin/ngos/{id}/approve`
 - `POST /api/admin/ngos/{id}/reject`
 - `POST /api/admin/ngos/{id}/suspend`
@@ -265,6 +268,7 @@ Response:
 `GET /api/ngo/my/profile`
 
 Frontend should treat this as the editable NGO profile source.
+This response is also the source of truth for NGO trust/completion fields such as `trustScore`, `trustTier`, and `profileComplete`.
 
 ### Update own NGO profile
 `PUT /api/ngo/my/profile`
@@ -326,7 +330,50 @@ Response:
 }
 ```
 
+### Incoming pledges for NGO dashboard
+`GET /api/ngo/my/pledges`
+
+Response item shape:
+```json
+{
+  "pledgeId": 44,
+  "needId": 12,
+  "donorName": "Alice Donor",
+  "donorEmail": "alice@example.com",
+  "itemName": "Rice packs",
+  "quantity": 10,
+  "status": "ACTIVE",
+  "createdAt": "2026-03-30T10:15:00"
+}
+```
+
 ## 7. Needs Contract
+
+### Need detail
+`GET /api/needs/{id}`
+
+Response shape:
+```json
+{
+  "id": 12,
+  "ngoId": 5,
+  "ngoName": "Helping Hands",
+  "ngoAddress": "123 Main Street, Colombo",
+  "ngoPhotoUrl": "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+  "ngoTrustScore": 82,
+  "ngoTrustTier": "TRUSTED",
+  "category": "FOOD",
+  "itemName": "Rice packs",
+  "description": "5kg rice packs for 50 families",
+  "quantityRequired": 50,
+  "quantityPledged": 30,
+  "quantityRemaining": 20,
+  "urgency": "HIGH",
+  "expiryDate": "2026-04-15",
+  "status": "PARTIALLY_PLEDGED",
+  "createdAt": "2026-03-30T10:15:00"
+}
+```
 
 ### Create or update need
 Used by:
@@ -401,6 +448,30 @@ Response:
 ### Pledge history
 `GET /api/pledges/history`
 
+### Pledge detail
+`GET /api/pledges/{id}`
+
+Response shape:
+```json
+{
+  "pledgeId": 44,
+  "needId": 12,
+  "ngoId": 5,
+  "ngoName": "Helping Hands",
+  "ngoPhotoUrl": "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+  "itemName": "Rice packs",
+  "category": "FOOD",
+  "quantity": 10,
+  "status": "ACTIVE",
+  "createdAt": "2026-03-30T10:15:00",
+  "expiresAt": "2026-04-01T10:15:00",
+  "ngoLat": 6.9271,
+  "ngoLng": 79.8612,
+  "ngoAddress": "123 Main Street, Colombo",
+  "ngoContactEmail": "contact@helpinghands.org"
+}
+```
+
 ## 9. Admin Contract
 
 ### Reject NGO
@@ -429,6 +500,26 @@ Response:
   "message": "NGO approved."
 }
 ```
+
+### Pending NGO verification queue
+`GET /api/admin/ngos/pending`
+
+This currently returns the backend `Ngo` entity. For verification-queue UI, the confirmed fields available for document review include:
+- `id`
+- `name`
+- `address`
+- `contactEmail`
+- `contactPhone`
+- `description`
+- `categoryOfWork`
+- `photoUrl`
+- `documentUrl`
+- `status`
+- `profileComplete`
+- `trustScore`
+- `trustTier`
+- `rejectionReason`
+- `createdAt`
 
 ### Suspend NGO
 `POST /api/admin/ngos/{id}/suspend`
@@ -460,6 +551,16 @@ Current keys include:
 - `pledgesToday`
 - `fulfillmentsThisMonth`
 - `totalReports`
+
+### Admin NGO needs inspection
+`GET /api/admin/ngos/{id}/needs`
+
+This returns the same safe need-detail shape documented in the needs section and is intended for admin review or inline NGO expansion flows.
+
+### Not currently supported
+These workflows are not yet part of the agreed backend contract:
+- report dismissal or resolution endpoint
+- NGO reinstate endpoint
 
 ## 10. Frontend Responsibilities
 

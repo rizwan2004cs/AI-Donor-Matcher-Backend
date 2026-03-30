@@ -1,5 +1,6 @@
 package com.aidonormatcher.backend.controller;
 
+import com.aidonormatcher.backend.dto.NeedDetailResponse;
 import com.aidonormatcher.backend.dto.NeedRequest;
 import com.aidonormatcher.backend.entity.Need;
 import com.aidonormatcher.backend.entity.Ngo;
@@ -27,13 +28,19 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @Tag(name = "Needs", description = "NGO need management endpoints.")
-@SecurityRequirement(name = "bearerAuth")
 public class NeedController {
 
     private final NeedService needService;
     private final NgoRepository ngoRepository;
 
+    @Operation(summary = "Get a single need by id")
+    @GetMapping("/api/needs/{id}")
+    public ResponseEntity<NeedDetailResponse> getNeedDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(needService.getNeedDetail(id));
+    }
+
     @Operation(summary = "List needs created by the authenticated NGO")
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/api/ngo/my/needs")
     public ResponseEntity<List<Need>> getMyNeeds(@AuthenticationPrincipal User user) {
         Ngo ngo = ngoRepository.findByUserId(user.getId())
@@ -42,6 +49,7 @@ public class NeedController {
     }
 
     @Operation(summary = "Create a new need")
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/api/needs")
     public ResponseEntity<Need> createNeed(
             @AuthenticationPrincipal User user,
@@ -52,6 +60,7 @@ public class NeedController {
     }
 
     @Operation(summary = "Update an existing need")
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/api/needs/{id}")
     public ResponseEntity<Need> updateNeed(
             @AuthenticationPrincipal User user,
@@ -61,6 +70,7 @@ public class NeedController {
     }
 
     @Operation(summary = "Delete a need")
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/api/needs/{id}")
     public ResponseEntity<Void> deleteNeed(
             @AuthenticationPrincipal User user,
@@ -70,6 +80,7 @@ public class NeedController {
     }
 
     @Operation(summary = "Mark a need as fulfilled")
+    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/api/needs/{id}/fulfill")
     public ResponseEntity<Void> fulfillNeed(
             @AuthenticationPrincipal User user,
