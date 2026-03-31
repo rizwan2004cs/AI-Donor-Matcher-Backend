@@ -33,7 +33,7 @@ git rebase origin/main                      # replay your commits on top of upda
 - Java 21 (JDK installed at `C:\Program Files\Java\jdk-21`)
 - Maven 3.9+ (or use the wrapper if added)
 - Git 2.x
-- A PostgreSQL database connection (Supabase or Neon — see `application.properties`)
+- A PostgreSQL database connection (Neon recommended — see `application.properties`)
 - The repo cloned locally and the `main` branch building successfully
 
 ---
@@ -80,7 +80,9 @@ git checkout -b feature/auth/register-login
 
 ### 3. Implement the feature
 
-Each feature in `FEATURES.md` maps to a specific controller. Follow this structure:
+Most product features are already implemented end to end. Use this workflow for fixes, refinements, and new additions while keeping the current Firebase-first architecture intact.
+
+Controller work still follows this structure:
 
 ```
 src/main/java/com/aidonormatcher/backend/
@@ -108,8 +110,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
         authService.register(req);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body("Registration successful. Check your email to verify.");
+        return ResponseEntity.ok().build();
     }
 }
 ```
@@ -135,12 +136,11 @@ Write a clear, scoped commit message:
 
 ```bash
 git add src/main/java/com/aidonormatcher/backend/controller/<Name>Controller.java
-git commit -m "feat(auth): add register, verify-email, and login endpoints
+git commit -m "docs(auth): refresh Firebase-first flow notes
 
-- POST /api/auth/register — creates donor or NGO account
-- GET  /api/auth/verify   — activates account via token
-- POST /api/auth/login    — returns JWT on success
-- Delegates all logic to AuthService (no business logic in controller)"
+- Document active Firebase-backed auth flow
+- Note dormant legacy OTP endpoints
+- Keep docs aligned with current controllers and services"
 ```
 
 **Commit message format:**
