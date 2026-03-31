@@ -37,7 +37,8 @@ public interface NgoRepository extends JpaRepository<Ngo, Long> {
                 )) AS distance_km
                 FROM ngos n
                 WHERE n.status = 'APPROVED'
-                  AND n.profile_complete = true
+                  AND n.lat IS NOT NULL
+                  AND n.lng IS NOT NULL
                   AND (:category IS NULL OR n.category_of_work = :category)
                   AND (:search IS NULL OR LOWER(n.name) LIKE LOWER(CONCAT('%', :search, '%')))
             ) nearby_ngos
@@ -56,7 +57,6 @@ public interface NgoRepository extends JpaRepository<Ngo, Long> {
             SELECT n.*
             FROM ngos n
             WHERE n.status = 'APPROVED'
-              AND n.profile_complete = true
               AND (:category IS NULL OR n.category_of_work = :category)
               AND (:search IS NULL OR LOWER(n.name) LIKE LOWER(CONCAT('%', :search, '%')))
             ORDER BY n.trust_score DESC

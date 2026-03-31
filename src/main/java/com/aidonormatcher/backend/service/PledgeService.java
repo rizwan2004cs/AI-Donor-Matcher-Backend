@@ -34,12 +34,9 @@ public class PledgeService {
 
     @Transactional
     public PledgeResponse createPledge(PledgeRequest req, Long donorId) {
-        // 1. Load donor — verify email verification
+        // 1. Load donor
         User donor = userRepository.findById(donorId)
                 .orElseThrow(() -> new RuntimeException("Donor not found."));
-        if (!donor.isEmailVerified()) {
-            throw new RuntimeException("Email not verified.");
-        }
 
         // 2. Load need with pessimistic write lock
         Need need = needRepository.findByIdWithLock(req.needId());

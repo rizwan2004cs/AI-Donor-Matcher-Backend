@@ -79,13 +79,17 @@ class PledgeServiceTest {
     }
 
     @Test
-    void createPledge_emailNotVerified_throwsRuntimeException() {
+    void createPledge_unverifiedDonor_stillCreatesPledge() {
         donor.setEmailVerified(false);
         when(userRepository.findById(1L)).thenReturn(Optional.of(donor));
+        when(needRepository.findByIdWithLock(50L)).thenReturn(need);
+        when(pledgeRepository.save(any(Pledge.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThatThrownBy(() -> pledgeService.createPledge(new PledgeRequest(50L, 1), 1L))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Email not verified");
+        PledgeResponse response = pledgeService.createPledge(new PledgeRequest(50L, 1), 1L);
+
+        assertThat(response).isNotNull();
+        assertThat(need.getQuantityPledged()).isEqualTo(1);
+        verify(needService).recalculateStatus(need);
     }
 
     @Test

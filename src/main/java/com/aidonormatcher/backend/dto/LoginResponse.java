@@ -13,7 +13,5 @@ public record LoginResponse(
         @Schema(description = "Authenticated email address.", example = "alice@example.com")
         String email,
         @Schema(description = "Role of the authenticated user.", example = "DONOR")
-        String role,
-        @Schema(description = "Whether the user email is currently verified.", example = "true")
-        boolean emailVerified) {
+        String role) {
 }

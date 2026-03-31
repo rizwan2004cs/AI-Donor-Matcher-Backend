@@ -1,12 +1,14 @@
 package com.aidonormatcher.backend.controller;
 
 import com.aidonormatcher.backend.dto.EmailRequest;
+import com.aidonormatcher.backend.dto.FirebaseRegisterRequest;
 import com.aidonormatcher.backend.dto.LoginRequest;
 import com.aidonormatcher.backend.dto.LoginResponse;
 import com.aidonormatcher.backend.dto.MessageResponse;
 import com.aidonormatcher.backend.dto.OtpVerificationRequest;
 import com.aidonormatcher.backend.dto.RegisterRequest;
 import com.aidonormatcher.backend.service.AuthService;
+import com.aidonormatcher.backend.service.FirebaseAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final FirebaseAuthService firebaseAuthService;
 
     @Operation(
             summary = "Register a donor or NGO account using OTP",
@@ -78,6 +81,44 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Complete Firebase-backed registration and return the authenticated app session")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Firebase user linked to the application successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation error or Firebase token issue")
+    })
+    @PostMapping(value = "/firebase/register", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LoginResponse> firebaseRegisterJson(
+            @Valid @RequestBody FirebaseRegisterRequest request,
+            @RequestHeader("Authorization") String authorizationHeader) {
+        LoginResponse response = firebaseAuthService.register(request, null, extractBearerToken(authorizationHeader));
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Complete Firebase-backed NGO registration with multipart data")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Firebase NGO user linked to the application successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation error or Firebase token issue")
+    })
+    @PostMapping(value = "/firebase/register", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<LoginResponse> firebaseRegisterMultipart(
+            @Valid @ModelAttribute FirebaseRegisterRequest request,
+            @RequestPart(value = "documents", required = false) org.springframework.web.multipart.MultipartFile document,
+            @RequestHeader("Authorization") String authorizationHeader) {
+        LoginResponse response = firebaseAuthService.register(request, document, extractBearerToken(authorizationHeader));
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Log in with a Firebase ID token and return the app session payload")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Firebase login successful"),
+            @ApiResponse(responseCode = "400", description = "Firebase token invalid or app account not linked")
+    })
+    @PostMapping("/firebase/login")
+    public ResponseEntity<LoginResponse> firebaseLogin(@RequestHeader("Authorization") String authorizationHeader) {
+        LoginResponse response = firebaseAuthService.login(extractBearerToken(authorizationHeader));
+        return ResponseEntity.ok(response);
+    }
+
     @Operation(summary = "Resend verification OTP")
     @PostMapping("/resend-verification")
     public ResponseEntity<MessageResponse> resendVerification(@Valid @RequestBody EmailRequest request) {
@@ -104,5 +145,12 @@ public class AuthController {
     public ResponseEntity<MessageResponse> verifyOtp(@Valid @RequestBody OtpVerificationRequest request) {
         authService.verifyOtp(request.email(), request.otp());
         return ResponseEntity.ok(new MessageResponse("Email verified"));
+    }
+
+    private String extractBearerToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new RuntimeException("Missing Firebase bearer token.");
+        }
+        return authorizationHeader.substring(7);
     }
 }

@@ -3,107 +3,129 @@ package com.aidonormatcher.backend.service;
 import com.aidonormatcher.backend.entity.Need;
 import com.aidonormatcher.backend.entity.Ngo;
 import com.aidonormatcher.backend.entity.User;
+import com.resend.Resend;
+import com.resend.core.exception.ResendException;
+import com.resend.services.emails.Emails;
+import com.resend.services.emails.model.CreateEmailResponse;
+import com.resend.services.emails.model.CreateEmailOptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.RestClient;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.hamcrest.Matchers.containsString;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class EmailServiceTest {
 
+    @Mock
+    private Resend resend;
+
+    @Mock
+    private Emails resendEmails;
+
     private EmailService emailService;
-    private MockRestServiceServer server;
 
     @BeforeEach
     void setUp() {
-        RestClient.Builder builder = RestClient.builder();
-        server = MockRestServiceServer.bindTo(builder).build();
-        RestClient restClient = builder.baseUrl("https://api.resend.com").build();
+        when(resend.emails()).thenReturn(resendEmails);
 
-        emailService = new EmailService(restClient);
+        emailService = new EmailService(resend);
         ReflectionTestUtils.setField(emailService, "fromEmail", "no-reply@aidonormatcher.com");
         ReflectionTestUtils.setField(emailService, "baseUrl", "http://localhost:3000");
         ReflectionTestUtils.setField(emailService, "emailProvider", "resend");
-        ReflectionTestUtils.setField(emailService, "resendApiKey", "re_test_key");
+        ReflectionTestUtils.setField(emailService, "resendApiKey", "test-api-key");
     }
 
     @Test
-    void sendVerificationEmail_sendsEmailWithVerificationLink() {
+    void sendVerificationEmail_sendsEmailWithVerificationLink() throws ResendException {
         User user = User.builder()
-                .id(1L).fullName("Alice").email("alice@example.com").build();
+                .id(1L)
+                .fullName("Alice")
+                .email("alice@example.com")
+                .build();
 
-        server.expect(requestTo("https://api.resend.com/emails"))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(header("Authorization", "Bearer re_test_key"))
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("""
-                        {
-                          "from":"no-reply@aidonormatcher.com",
-                          "to":["alice@example.com"],
-                          "subject":"Verify your AI Donor Matcher account"
-                        }
-                        """, false))
-                .andExpect(content().string(containsString("token-abc")))
-                .andRespond(withSuccess("{\"id\":\"email_123\"}", MediaType.APPLICATION_JSON));
+        when(resendEmails.send(any(CreateEmailOptions.class))).thenReturn(org.mockito.Mockito.mock(CreateEmailResponse.class));
 
         emailService.sendVerificationEmail(user, "token-abc");
 
-        server.verify();
+        ArgumentCaptor<CreateEmailOptions> emailCaptor = ArgumentCaptor.forClass(CreateEmailOptions.class);
+        verify(resendEmails).send(emailCaptor.capture());
+
+        CreateEmailOptions sentEmail = emailCaptor.getValue();
+        assertThat(sentEmail.getFrom()).isEqualTo("no-reply@aidonormatcher.com");
+        assertThat(sentEmail.getTo()).containsExactly("alice@example.com");
+        assertThat(sentEmail.getSubject()).isEqualTo("Verify your email for AI Donor Matcher");
+        assertThat(sentEmail.getText()).contains("token-abc");
     }
 
     @Test
-    void sendNgoApprovedEmail_sendsEmailToNgoContactEmail() {
-        Ngo ngo = Ngo.builder().id(1L).name("Food Bank").contactEmail("food@bank.org").build();
+    void sendNgoApprovedEmail_sendsEmailToNgoContactEmail() throws ResendException {
+        Ngo ngo = Ngo.builder()
+                .id(1L)
+                .name("Food Bank")
+                .contactEmail("food@bank.org")
+                .build();
 
-        server.expect(requestTo("https://api.resend.com/emails"))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(content().string(containsString("food@bank.org")))
-                .andRespond(withSuccess("{\"id\":\"email_123\"}", MediaType.APPLICATION_JSON));
+        when(resendEmails.send(any(CreateEmailOptions.class))).thenReturn(org.mockito.Mockito.mock(CreateEmailResponse.class));
 
         emailService.sendNgoApprovedEmail(ngo);
 
-        server.verify();
+        ArgumentCaptor<CreateEmailOptions> emailCaptor = ArgumentCaptor.forClass(CreateEmailOptions.class);
+        verify(resendEmails).send(emailCaptor.capture());
+
+        CreateEmailOptions sentEmail = emailCaptor.getValue();
+        assertThat(sentEmail.getTo()).containsExactly("food@bank.org");
+        assertThat(sentEmail.getSubject()).isEqualTo("Your NGO application has been approved");
+        assertThat(sentEmail.getText()).contains("complete or review your profile");
     }
 
     @Test
-    void sendNeedExpiryWarning_sendsEmailToNgo() {
-        Ngo ngo = Ngo.builder().id(1L).contactEmail("ngo@org.com").build();
-        Need need = Need.builder().id(10L).itemName("Water").build();
+    void sendNeedExpiryWarning_sendsEmailToNgo() throws ResendException {
+        Ngo ngo = Ngo.builder()
+                .id(1L)
+                .contactEmail("ngo@org.com")
+                .build();
+        Need need = Need.builder()
+                .id(10L)
+                .itemName("Water")
+                .build();
 
-        server.expect(requestTo("https://api.resend.com/emails"))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(content().string(containsString("ngo@org.com")))
-                .andExpect(content().string(containsString("Water")))
-                .andRespond(withSuccess("{\"id\":\"email_123\"}", MediaType.APPLICATION_JSON));
+        when(resendEmails.send(any(CreateEmailOptions.class))).thenReturn(org.mockito.Mockito.mock(CreateEmailResponse.class));
 
         emailService.sendNeedExpiryWarning(ngo, need);
 
-        server.verify();
+        ArgumentCaptor<CreateEmailOptions> emailCaptor = ArgumentCaptor.forClass(CreateEmailOptions.class);
+        verify(resendEmails).send(emailCaptor.capture());
+
+        CreateEmailOptions sentEmail = emailCaptor.getValue();
+        assertThat(sentEmail.getTo()).containsExactly("ngo@org.com");
+        assertThat(sentEmail.getText()).contains("Water");
     }
 
     @Test
-    void sendNgoApprovedEmail_whenRequestFails_queuesRetryAndDoesNotThrow() {
-        Ngo ngo = Ngo.builder().id(1L).name("Food Bank").contactEmail("food@bank.org").build();
+    void sendNgoApprovedEmail_whenRequestFails_queuesRetryAndDoesNotThrow() throws ResendException {
+        Ngo ngo = Ngo.builder()
+                .id(1L)
+                .name("Food Bank")
+                .contactEmail("food@bank.org")
+                .build();
 
-        server.expect(requestTo("https://api.resend.com/emails"))
-                .andRespond(withServerError());
-        server.expect(requestTo("https://api.resend.com/emails"))
-                .andRespond(withSuccess("{\"id\":\"email_123\"}", MediaType.APPLICATION_JSON));
+        when(resendEmails.send(any(CreateEmailOptions.class)))
+                .thenThrow(new ResendException("quota exceeded"))
+                .thenReturn(org.mockito.Mockito.mock(CreateEmailResponse.class));
 
         assertThatNoException().isThrownBy(() -> emailService.sendNgoApprovedEmail(ngo));
         emailService.processQueuedEmails();
 
-        server.verify();
+        verify(resendEmails, times(2)).send(any(CreateEmailOptions.class));
     }
 }

@@ -56,8 +56,7 @@ public class AuthService {
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
-                user.getRole().name(),
-                user.isEmailVerified());
+                user.getRole().name());
     }
 
     public void sendRegistrationOtp(String email) {
@@ -126,6 +125,10 @@ public class AuthService {
     public LoginResponse login(LoginRequest req) {
         User user = userRepository.findByEmail(req.email())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
+
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new BadCredentialsException("This account uses Firebase sign-in.");
+        }
 
         if (!passwordEncoder.matches(req.password(), user.getPassword())) {
             throw new BadCredentialsException("Invalid email or password.");

@@ -83,7 +83,6 @@ class AuthServiceTest {
                 assertThat(response.fullName()).isEqualTo("Alice");
                 assertThat(response.email()).isEqualTo("alice@example.com");
                 assertThat(response.role()).isEqualTo("DONOR");
-                assertThat(response.emailVerified()).isTrue();
                 verify(registrationOtpService).verifyOtp("alice@example.com", "123456");
                 verify(registrationOtpService).clearOtp("alice@example.com");
                 verify(emailService, never()).sendVerificationEmail(any(User.class), anyString());
@@ -123,7 +122,6 @@ class AuthServiceTest {
                 assertThat(response.token()).isEqualTo("jwt-ngo-token");
                 assertThat(response.userId()).isEqualTo(2L);
                 assertThat(response.role()).isEqualTo("NGO");
-                assertThat(response.emailVerified()).isTrue();
                 verify(emailService).sendNgoApplicationAlert(any(User.class), any(Ngo.class));
                 verify(registrationOtpService).verifyOtp("ngo@org.com", "123456");
                 verify(registrationOtpService).clearOtp("ngo@org.com");
@@ -218,6 +216,22 @@ class AuthServiceTest {
         }
 
         // ─── OTP verification ─────────────────────────────────────────────────────
+
+        @Test
+        void login_firebaseBackedAccountWithoutPassword_throwsBadCredentialsException() {
+                User user = User.builder()
+                                .id(1L)
+                                .email("firebase@example.com")
+                                .firebaseUid("firebase-uid")
+                                .password(null)
+                                .role(Role.DONOR)
+                                .build();
+                when(userRepository.findByEmail("firebase@example.com")).thenReturn(Optional.of(user));
+
+                assertThatThrownBy(() -> authService.login(new LoginRequest("firebase@example.com", "pw")))
+                                .isInstanceOf(BadCredentialsException.class)
+                                .hasMessageContaining("Firebase sign-in");
+        }
 
         @Test
         void sendOtp_unverifiedUser_sendsOtpEmailAndSetsFields() {

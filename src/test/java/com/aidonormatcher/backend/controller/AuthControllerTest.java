@@ -5,6 +5,7 @@ import com.aidonormatcher.backend.dto.LoginResponse;
 import com.aidonormatcher.backend.dto.RegisterRequest;
 import com.aidonormatcher.backend.enums.Role;
 import com.aidonormatcher.backend.service.AuthService;
+import com.aidonormatcher.backend.service.FirebaseAuthService;
 import com.aidonormatcher.backend.service.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,9 @@ class AuthControllerTest {
     private AuthService authService;
 
     @MockBean
+    private FirebaseAuthService firebaseAuthService;
+
+    @MockBean
     private JwtService jwtService;
 
     @MockBean
@@ -64,8 +68,7 @@ class AuthControllerTest {
                 1L,
                 "Alice Donor",
                 "alice@example.com",
-                "DONOR",
-                true);
+                "DONOR");
 
         when(authService.register(any(RegisterRequest.class), eq(null))).thenReturn(response);
 
@@ -76,8 +79,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.token").value("jwt-register-token"))
                 .andExpect(jsonPath("$.userId").value(1))
                 .andExpect(jsonPath("$.email").value("alice@example.com"))
-                .andExpect(jsonPath("$.role").value("DONOR"))
-                .andExpect(jsonPath("$.emailVerified").value(true));
+                .andExpect(jsonPath("$.role").value("DONOR"));
 
         verify(authService).register(any(RegisterRequest.class), eq(null));
     }
@@ -89,8 +91,7 @@ class AuthControllerTest {
                 2L,
                 "Helping Hands",
                 "ngo@example.com",
-                "NGO",
-                true);
+                "NGO");
         when(authService.register(any(RegisterRequest.class), any())).thenReturn(response);
 
         mockMvc.perform(multipart("/api/auth/register")
@@ -105,8 +106,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.token").value("jwt-ngo-token"))
                 .andExpect(jsonPath("$.userId").value(2))
                 .andExpect(jsonPath("$.email").value("ngo@example.com"))
-                .andExpect(jsonPath("$.role").value("NGO"))
-                .andExpect(jsonPath("$.emailVerified").value(true));
+                .andExpect(jsonPath("$.role").value("NGO"));
     }
 
     @Test
@@ -157,8 +157,7 @@ class AuthControllerTest {
                 1L,
                 "Alice Donor",
                 "alice@example.com",
-                "DONOR",
-                true);
+                "DONOR");
 
         when(authService.login(any(LoginRequest.class))).thenReturn(response);
 
@@ -183,6 +182,49 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Invalid email or password."));
+    }
+
+    @Test
+    void firebaseRegisterJson_validRequest_returnsLoginResponse() throws Exception {
+        LoginResponse response = new LoginResponse(
+                "firebase-id-token",
+                10L,
+                "Firebase Donor",
+                "firebase@example.com",
+                "DONOR");
+
+        when(firebaseAuthService.register(any(), eq(null), eq("firebase-id-token"))).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/firebase/register")
+                        .header("Authorization", "Bearer firebase-id-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "fullName", "Firebase Donor",
+                                "role", "DONOR",
+                                "location", "Nellore"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("firebase-id-token"))
+                .andExpect(jsonPath("$.email").value("firebase@example.com"))
+                .andExpect(jsonPath("$.role").value("DONOR"));
+    }
+
+    @Test
+    void firebaseLogin_validToken_returnsLoginResponse() throws Exception {
+        LoginResponse response = new LoginResponse(
+                "firebase-id-token",
+                11L,
+                "Firebase NGO",
+                "ngo@example.com",
+                "NGO");
+
+        when(firebaseAuthService.login("firebase-id-token")).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/firebase/login")
+                        .header("Authorization", "Bearer firebase-id-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("firebase-id-token"))
+                .andExpect(jsonPath("$.userId").value(11))
+                .andExpect(jsonPath("$.role").value("NGO"));
     }
 
     @Test
