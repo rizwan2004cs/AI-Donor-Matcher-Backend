@@ -25,6 +25,7 @@ Set these manually in Render before going live:
 - `APP_BASE_URL`
 - `CORS_ALLOWED_ORIGIN_PATTERNS`
 - `FIREBASE_ADMIN_CREDENTIALS_JSON`
+- `FIREBASE_ADMIN_PROJECT_ID`
 - `FIREBASE_MIGRATION_ENABLED=false`
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
@@ -85,6 +86,7 @@ Also set all Firebase web app variables in Vercel:
 - The backend listens on `PORT`, which Render injects automatically.
 - Database schema updates still rely on `spring.jpa.hibernate.ddl-auto=update`.
 - Auth emails are handled by Firebase, not the backend mail system.
+- `FIREBASE_ADMIN_PROJECT_ID` should match your Firebase project id, for example `ngo-donation-matcher`.
 - If `EMAIL_PROVIDER`, `RESEND_API_KEY`, or `MAIL_FROM` are omitted, transactional email methods safely no-op.
 - The email retry queue is still in-memory; if the service restarts before retrying, queued emails are lost.
 - Keep `FIREBASE_MIGRATION_ENABLED=false` in production so the one-time legacy-user import does not run again.

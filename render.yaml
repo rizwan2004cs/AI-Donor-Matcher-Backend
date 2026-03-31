@@ -22,6 +22,8 @@ services:
         value: http://localhost:5173,https://*.vercel.app
       - key: FIREBASE_ADMIN_CREDENTIALS_JSON
         sync: false
+      - key: FIREBASE_ADMIN_PROJECT_ID
+        sync: false
       - key: FIREBASE_MIGRATION_ENABLED
         value: "false"
       - key: GEOCODING_PROVIDER

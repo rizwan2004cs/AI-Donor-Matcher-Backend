@@ -39,7 +39,9 @@ public class FirebaseConfig {
         privateKey = resolveConfigValue(privateKey, "FIREBASE_ADMIN_PRIVATE_KEY");
 
         GoogleCredentials credentials;
+        String resolvedProjectId = projectId;
         if (!credentialsJson.isBlank()) {
+            resolvedProjectId = firstNonBlank(projectId, extractProjectId(credentialsJson));
             credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(
                     credentialsJson.replace("\\n", "\n").getBytes(StandardCharsets.UTF_8)));
         } else if (!credentialsPath.isBlank()) {
@@ -47,6 +49,7 @@ public class FirebaseConfig {
             if (!Files.exists(credentialsFile)) {
                 throw new IllegalStateException("Firebase Admin credentials file not found: " + credentialsFile);
             }
+            resolvedProjectId = firstNonBlank(projectId, extractProjectId(Files.readString(credentialsFile)));
             credentials = GoogleCredentials.fromStream(Files.newInputStream(credentialsFile));
         } else {
             if (projectId.isBlank() || clientEmail.isBlank() || privateKey.isBlank()) {
@@ -64,10 +67,12 @@ public class FirebaseConfig {
             credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(credentialsBytes));
         }
 
-        FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(credentials)
-                .setProjectId(projectId.isBlank() ? null : projectId)
-                .build();
+        FirebaseOptions.Builder optionsBuilder = FirebaseOptions.builder()
+                .setCredentials(credentials);
+        if (!resolvedProjectId.isBlank()) {
+            optionsBuilder.setProjectId(resolvedProjectId);
+        }
+        FirebaseOptions options = optionsBuilder.build();
 
         if (FirebaseApp.getApps().isEmpty()) {
             return FirebaseApp.initializeApp(options);
@@ -134,5 +139,24 @@ public class FirebaseConfig {
             return value.substring(1, value.length() - 1);
         }
         return value;
+    }
+
+    private String extractProjectId(String credentialsJson) {
+        try {
+            Map<?, ?> credentialsMap = new ObjectMapper().readValue(credentialsJson, Map.class);
+            Object projectId = credentialsMap.get("project_id");
+            return projectId instanceof String projectIdValue ? projectIdValue : "";
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
     }
 }
