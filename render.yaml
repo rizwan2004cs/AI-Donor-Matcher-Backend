@@ -20,6 +20,10 @@ services:
         sync: false
       - key: CORS_ALLOWED_ORIGIN_PATTERNS
         value: http://localhost:5173,https://*.vercel.app
+      - key: FIREBASE_ADMIN_CREDENTIALS_JSON
+        sync: false
+      - key: FIREBASE_MIGRATION_ENABLED
+        value: "false"
       - key: GEOCODING_PROVIDER
         value: nominatim
       - key: GEOCODING_NOMINATIM_USER_AGENT
